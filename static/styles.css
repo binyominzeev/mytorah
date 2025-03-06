@@ -1,0 +1,119 @@
+/* 🎨 General Styles */
+body {
+    font-family: Arial, sans-serif;
+    display: grid;
+    grid-template-columns: 250px 1fr 300px;
+    grid-template-rows: auto 1fr;
+    gap: 10px;
+    padding: 0;
+    margin: 0;
+    height: 100vh;
+}
+
+.column.hungarian {
+  font-size: 21px;
+}
+
+/* 🎭 Sidebar (Navigation) */
+#sidebar {
+    background: #f8f9fa;
+    padding: 10px;
+    overflow-y: auto;
+    transition: transform 0.3s ease-in-out;
+}
+
+/* 📜 Torah Text */
+#torah-text {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 20px;
+}
+
+/* 📖 Two Column Layout */
+.column {
+    width: 48%;
+}
+
+.hebrew {
+    text-align: right;
+    direction: rtl;
+    font-size: 25px;
+    font-family: "Taamey Frank CLM";
+}
+
+/* 🔦 Blinking Effect */
+@keyframes blink {
+    0% { background-color: yellow; }
+    50% { background-color: none; }
+    100% { background-color: yellow; }
+}
+
+/* 💬 Commentary Section */
+#commentary {
+    background: #eef;
+    padding: 10px;
+    overflow-y: auto;
+}
+
+/* 🎛️ Control Buttons */
+.controls {
+    text-align: center;
+    padding: 10px;
+}
+
+/* 📱 MOBILE RESPONSIVENESS */
+@media (max-width: 768px) {
+    body {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto 1fr;
+    }
+
+    #sidebar {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 250px;
+        height: 100vh;
+        background: white;
+        transform: translateX(-100%);
+        box-shadow: 2px 0px 5px rgba(0,0,0,0.2);
+    }
+
+    #sidebar.open {
+        transform: translateX(0);
+    }
+
+    #torah-text {
+        flex-direction: column;
+    }
+
+    .column {
+        width: 100%;
+    }
+
+    #commentary {
+        order: 3;
+    }
+}
+
+/* 🎭 Sidebar Toggle Button */
+#menu-toggle {
+    display: none;
+    position: absolute;
+    left: 10px;
+    top: 10px;
+    background: #007bff;
+    color: white;
+    padding: 10px;
+    border: none;
+    cursor: pointer;
+}
+
+@media (max-width: 768px) {
+    #menu-toggle {
+        display: block;
+    }
+}
+
