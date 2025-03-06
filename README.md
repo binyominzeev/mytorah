@@ -1,2 +1,3 @@
-# mytorah
+# MyTorah
+
 Publish and sync Torah chidushim online using Obsidian.
