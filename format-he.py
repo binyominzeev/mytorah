@@ -17,7 +17,7 @@ text = text.replace("(ס)", "\n").replace("(פ)", "\n")
 text = re.sub(r"\{(.*?)\}", lambda m: "**{" + m.group(1) + "}**", text)
 
 # Replace any "שמות פרק-<number>" or "שמות פרק <number>" with a header
-text = re.sub(r"שמות פרק[\־ ](\S+)", r"# \1", text)
+text = re.sub(r"(.*?) פרק[\־ ](\S+)", r"# \2", text)
 
 # Save to output file
 with open("he-2.txt", "w", encoding="utf-8") as f:

@@ -3,7 +3,8 @@ import re
 from bs4 import BeautifulSoup
 
 def get_exodus_chapter(chapter):
-    url = f"https://www.sefaria.org/api/texts/Exodus.{chapter}?context=0"
+    #url = f"https://www.sefaria.org/api/texts/Exodus.{chapter}?context=0"
+    url = f"https://www.sefaria.org/api/texts/Esther.{chapter}?context=0"
     response = requests.get(url)
     if response.status_code == 200:
         data = response.json()
