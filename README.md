@@ -4,7 +4,7 @@ Publish and sync Torah chidushim online using Obsidian.
 
 That's how it looks like now:
 
-![Screenshot from 2025-03-06 22-50-35](https://github.com/user-attachments/assets/89e14030-72a3-4811-8f7c-8cded6d8ecaa)
+![Screenshot from 2025-03-09 17-58-54](https://github.com/user-attachments/assets/7b8bcf96-fe3c-4e2a-a341-720d7735cc94)
 
 This is the Obsidian vault for editing it:
 
