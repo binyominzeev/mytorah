@@ -1,14 +1,8 @@
 import os
 import shutil
-from utils.file_utils import read_markdown_file, markdown_to_html, remove_cssclasses
+from utils.file_utils import read_markdown_file, markdown_to_html
 from config import VAULT_PATH, OUTPUT_PATH
 import re
-import unicodedata
-
-def remove_accents(text):
-    """Convert accented characters to their non-accented equivalents."""
-    normalized = unicodedata.normalize('NFD', text)  # Decomposes accents
-    return re.sub(r'[\u0300-\u036f]', '', normalized)  # Removes diacritic marks
 
 def copy_static_files():
     """Copy static assets (CSS, JS) to the output folder"""
@@ -43,29 +37,11 @@ def generate_html():
                 parasha_path = os.path.join(book_path, parasha)
                 if os.path.isdir(parasha_path):
                     nav_html += f'<li><a href="{parasha}.html">{parasha}</a></li>'
-
-                    # Read Hebrew and Hungarian Markdown files
-                    he_text_lines = remove_cssclasses(read_markdown_file(os.path.join(parasha_path, "HE.md"))).split("\n")
-                    hu_text_lines = remove_cssclasses(read_markdown_file(os.path.join(parasha_path, "HU.md"))).split("\n")
-
-                    # Convert Markdown to HTML and structure into table rows
-                    table_rows = ""
-                    for he_line, hu_line in zip(he_text_lines, hu_text_lines):
-                        he_html = markdown_to_html(he_line.strip()) if he_line.strip() else "&nbsp;"
-                        hu_html = markdown_to_html(hu_line.strip()) if hu_line.strip() else "&nbsp;"
-                        table_rows += f"<tr><td class='hebrew'>{he_html}</td><td class='hungarian'>{hu_html}</td></tr>\n"
-
-                    # Final table structure
-                    bilingual_table_html = f"""
-                    <table class="bilingual-table">
-                        <tbody>
-                            {table_rows}
-                        </tbody>
-                    </table>
-                    """
-
-                    # Process commentaries
+                    
+                    he_text = markdown_to_html(read_markdown_file(os.path.join(parasha_path, "HE.md")))
+                    hu_text = markdown_to_html(read_markdown_file(os.path.join(parasha_path, "HU.md")))
                     commentary_html = ""
+
                     perusim_path = os.path.join(parasha_path, "perusim")
                     if os.path.exists(perusim_path):
                         for commentary_file in os.listdir(perusim_path):
@@ -77,17 +53,15 @@ def generate_html():
                     with open("templates/parasha.html", "r", encoding="utf-8") as f:
                         page_template = f.read()
 
-                    # Generate the final page HTML
                     page_html = page_template.format(
                         title=parasha,
                         nav_structure=nav_html,
-                        bilingual_content=bilingual_table_html,  # Use the table instead of plain text
+                        hebrew=he_text,
+                        hungarian=hu_text,
                         commentary=commentary_html
                     )
-                    
-                    filename=remove_accents(parasha) + ".html"
 
-                    with open(os.path.join(OUTPUT_PATH, filename), "w", encoding="utf-8") as f:
+                    with open(os.path.join(OUTPUT_PATH, f"{parasha}.html"), "w", encoding="utf-8") as f:
                         f.write(page_html)
 
             nav_html += "</ul></li>"

@@ -8,27 +8,20 @@
 </head>
 <body>
     <button id="menu-toggle">☰ Menu</button>
-
+    <div id="chapter-indicator">Chapter: 1</div>
+    
     <div id="sidebar">
         <h2>Torah</h2>
         {nav_structure}
     </div>
 
-    <div id="content">
-        <div class="controls">
-            <button onclick="toggleLang('hebrew')">Toggle Hebrew</button>
-            <button onclick="toggleLang('hungarian')">Toggle Hungarian</button>
-        </div>
-        <div id="torah-text">
-            <div class="column hebrew">{hebrew}</div>
-            <div class="column hungarian">{hungarian}</div>
-        </div>
-    </div>
+	<div class="content">
+		{bilingual_content}
+	</div>
 
-    <div id="commentary">
-        <h2>Commentary</h2>
-        {commentary}
-    </div>
+<div class="commentary-container">
+    {commentary}
+</div>
 </body>
 </html>
 

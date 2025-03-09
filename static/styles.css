@@ -9,10 +9,57 @@ body {
     margin: 0;
     height: 100vh;
 }
-
-.column.hungarian {
-  font-size: 21px;
+.bilingual-table td {
+    vertical-align: top;
+    padding-right: 15px;
+    padding-left: 15px;
+    width: 50%;
 }
+.hungarian p {
+  font-size: 20px;
+}
+td h1 {
+  margin: 0;
+}
+
+.content {
+    width: calc(100% - 27%);  /* Adjust width dynamically */
+    margin-right: 27%;  /* Same as the commentary width */
+    padding: 20px;
+    box-sizing: border-box;  /* Ensures padding doesn’t affect width */
+}
+
+.commentary-container {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 25%;  /* Keep commentary width fixed */
+    height: 100vh;
+    overflow-y: auto;
+    background: #eef;
+    padding: 15px;
+    border-left: 1px solid #ccc;
+}
+
+.commentary {
+    padding: 10px;
+    margin-bottom: 20px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+/* Highlight effect when linked */
+@keyframes blinkEffect {
+    0% { background-color: yellow; }
+    50% { background-color: transparent; }
+    100% { background-color: yellow; }
+}
+
+.blink {
+    animation: blinkEffect 1.5s ease-in-out;
+}
+
 
 /* 🎭 Sidebar (Navigation) */
 #sidebar {
@@ -39,9 +86,29 @@ body {
 .hebrew {
     text-align: right;
     direction: rtl;
-    font-size: 25px;
+    font-size: 26px;
     font-family: "Taamey Frank CLM";
 }
+
+#chapter-indicator {
+    position: fixed;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 8px 16px;
+    font-size: 18px;
+    border-radius: 8px;
+    z-index: 1000;
+    transition: opacity 0.3s ease-in-out;
+}
+
+/* Hide when no chapter is visible */
+.hidden {
+    opacity: 0;
+}
+
 
 /* 🔦 Blinking Effect */
 @keyframes blink {
@@ -68,6 +135,18 @@ body {
     body {
         grid-template-columns: 1fr;
         grid-template-rows: auto auto 1fr;
+    }
+    .content {
+        width: 100%;  
+        margin-right: 0;  /* Remove margin */
+    }
+
+    .commentary-container {
+        position: relative;  /* Allow scrolling with the page */
+        width: 100%;  
+        height: auto;
+        border-left: none;
+        border-top: 2px solid #ccc;
     }
 
     #sidebar {
