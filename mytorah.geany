@@ -27,9 +27,7 @@ long_line_behaviour=1
 long_line_column=72
 
 [files]
-current_page=0
-FILE_NAME_0=3759;Python;0;EUTF-8;1;1;1;%2Fhome%2Fbz%2FDesktop%2Faktualis%2Fmytorah%2Futils%2Fsite_generator.py;0;4
-FILE_NAME_1=0;Python;0;EUTF-8;1;1;1;%2Fhome%2Fbz%2FDesktop%2Faktualis%2Fmytorah%2Fconfig.py;0;4
+current_page=-1
 
 [VTE]
 last_dir=/home/bz

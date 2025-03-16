@@ -3,8 +3,8 @@ import re
 from bs4 import BeautifulSoup
 
 def get_exodus_chapter(chapter):
-    #url = f"https://www.sefaria.org/api/texts/Exodus.{chapter}?context=0"
-    url = f"https://www.sefaria.org/api/texts/Esther.{chapter}?context=0"
+    url = f"https://www.sefaria.org/api/texts/Exodus.{chapter}?context=0"
+    #url = f"https://www.sefaria.org/api/texts/Esther.{chapter}?context=0"
     response = requests.get(url)
     if response.status_code == 200:
         data = response.json()
@@ -19,7 +19,7 @@ def clean_text(text):
 def find_line_break_verses():
     break_verses = []
     
-    for chapter in range(27, 31):  # Chapters 27-30
+    for chapter in range(35, 38):  # Chapters 27-30
         verses = get_exodus_chapter(chapter)
         for i, verse in enumerate(verses, start=1):
             clean_verse = clean_text(verse)

@@ -5,6 +5,7 @@ from config import VAULT_PATH, OUTPUT_PATH
 import re
 import unicodedata
 import json
+from collections import OrderedDict
 
 def remove_accents(text):
     """Convert accented characters to their non-accented equivalents."""
@@ -91,6 +92,18 @@ def generate_nav_structure():
     nav_html += "</ul>"
     return nav_html
 
+def extract_chapter_verse_hu(line, current_chapter, current_verse):
+    """Extracts chapter and verse numbers from a line in HU.md"""
+    chapter_match = re.match(r"# (\d+)\. fejezet", line)
+    verse_match = re.match(r"\*\*(\d+)\.\*\*", line)
+
+    if chapter_match:
+        return int(chapter_match.group(1)), 0  # Reset verse when chapter changes
+    elif verse_match:
+        return current_chapter, int(verse_match.group(1))
+    
+    return current_chapter, current_verse  # Keep last known values
+
 def generate_html():
     """Generate static HTML files from the Obsidian vault structure."""
     if os.path.exists(OUTPUT_PATH):
@@ -119,9 +132,22 @@ def generate_html():
 
                     # Convert Markdown to HTML and structure as a bilingual table
                     table_rows = ""
+                    chapter = verse = 0
+                    commentaries = OrderedDict()  # Preserve order of first occurrence
+
                     for he_line, hu_line in zip(he_text_lines, hu_text_lines):
+                        # Extract chapter and verse from Hungarian text
+                        chapter, verse = extract_chapter_verse_hu(hu_line, chapter, verse)
+
                         he_html = markdown_to_html(he_line.strip()) if he_line.strip() else "&nbsp;"
                         hu_html = markdown_to_html(hu_line.strip()) if hu_line.strip() else "&nbsp;"
+
+                        # Capture commentary references in Hebrew text
+                        for match in re.findall(r'highlightCommentary\(\'([^\']+)\'\)', he_html):
+                            if match not in commentaries:
+                                comment_text = markdown_to_html(read_markdown_file(os.path.join(parasha_path, "perusim", f"{match}.md")))
+                                commentaries[match] = f"<strong>{chapter}:{verse}</strong> {comment_text}"
+
                         table_rows += f"<tr><td class='hebrew'>{he_html}</td><td class='hungarian'>{hu_html}</td></tr>\n"
 
                     bilingual_table_html = f"""
@@ -132,14 +158,8 @@ def generate_html():
                     </table>
                     """
 
-                    # Process Commentaries
-                    commentary_html = ""
-                    perusim_path = os.path.join(parasha_path, "perusim")
-                    if os.path.exists(perusim_path):
-                        for commentary_file in os.listdir(perusim_path):
-                            if commentary_file.endswith(".md"):
-                                file_id = commentary_file.replace(".md", "")
-                                commentary_html += f'<div id="{file_id}" class="commentary">{markdown_to_html(read_markdown_file(os.path.join(perusim_path, commentary_file)))}</div><hr>'
+                    # Process Commentaries in Order of First Appearance
+                    commentary_html = "".join(f'<div id="{file_id}" class="commentary">{text}</div><hr>' for file_id, text in commentaries.items())
 
                     # Read template
                     with open("templates/parasha.html", "r", encoding="utf-8") as f:
