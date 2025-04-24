@@ -104,86 +104,101 @@ def extract_chapter_verse_hu(line, current_chapter, current_verse):
     
     return current_chapter, current_verse  # Keep last known values
 
-def generate_html():
-    """Generate static HTML files from the Obsidian vault structure."""
-    if os.path.exists(OUTPUT_PATH):
-        shutil.rmtree(OUTPUT_PATH)
-    os.makedirs(OUTPUT_PATH, exist_ok=True)
+def generate_bilingual_html(lang1, lang2, output_subdir=""):
+    """Generate bilingual HTML pages for two languages and save them under the specified subdirectory."""
+    out_path = os.path.join(OUTPUT_PATH, output_subdir)
+    os.makedirs(out_path, exist_ok=True)
 
-    nav_html = generate_nav_structure()  # ✅ Generate nav structure once
+    nav_html = generate_nav_structure()
 
     for book in sorted(os.listdir(VAULT_PATH)):
         if book.startswith("."):
             continue
 
         book_path = os.path.join(VAULT_PATH, book)
-        if os.path.isdir(book_path):
-            for parasha in sorted(os.listdir(book_path)):
-                if parasha.startswith("."):
-                    continue
+        if not os.path.isdir(book_path):
+            continue
 
-                parasha_path = os.path.join(book_path, parasha)
-                if os.path.isdir(parasha_path):
-                    filename = remove_accents(parasha) + ".html"
+        for parasha in sorted(os.listdir(book_path)):
+            if parasha.startswith("."):
+                continue
 
-                    # Read Hebrew & Hungarian Markdown
-                    he_text_lines = remove_cssclasses(read_markdown_file(os.path.join(parasha_path, "HE.md"))).split("\n")
-                    hu_text_lines = remove_cssclasses(read_markdown_file(os.path.join(parasha_path, "HU.md"))).split("\n")
+            parasha_path = os.path.join(book_path, parasha)
+            if not os.path.isdir(parasha_path):
+                continue
 
-                    # Convert Markdown to HTML and structure as a bilingual table
-                    table_rows = ""
-                    chapter = verse = 0
-                    commentaries = OrderedDict()  # Preserve order of first occurrence
+            file1 = os.path.join(parasha_path, f"{lang1}.md")
+            file2 = os.path.join(parasha_path, f"{lang2}.md")
+            if not (os.path.exists(file1) and os.path.exists(file2)):
+                continue
 
-                    for he_line, hu_line in zip(he_text_lines, hu_text_lines):
-                        # Extract chapter and verse from Hungarian text
-                        chapter, verse = extract_chapter_verse_hu(hu_line, chapter, verse)
+            lang1_lines = remove_cssclasses(read_markdown_file(file1)).split("\n")
+            lang2_lines = remove_cssclasses(read_markdown_file(file2)).split("\n")
 
-                        he_html = markdown_to_html(he_line.strip()) if he_line.strip() else "&nbsp;"
-                        hu_html = markdown_to_html(hu_line.strip()) if hu_line.strip() else "&nbsp;"
+            filename = remove_accents(parasha) + ".html"
+            table_rows = ""
+            chapter = verse = 0
+            commentaries = OrderedDict()
 
-                        # Capture commentary references in Hebrew text
-                        for match in re.findall(r'highlightCommentary\(\'([^\']+)\'\)', he_html):
-                            if match not in commentaries:
-                                comment_text = markdown_to_html(read_markdown_file(os.path.join(parasha_path, "perusim", f"{match}.md")))
-                                commentaries[match] = f"<strong>{chapter}:{verse}</strong> {comment_text}"
+            for l1_line, l2_line in zip(lang1_lines, lang2_lines):
+                if lang2 == "HU":
+                    chapter, verse = extract_chapter_verse_hu(l2_line, chapter, verse)
 
-                        table_rows += f"<tr><td class='hebrew'>{he_html}</td><td class='hungarian'>{hu_html}</td></tr>\n"
+                l1_html = markdown_to_html(l1_line.strip()) if l1_line.strip() else "&nbsp;"
+                l2_html = markdown_to_html(l2_line.strip()) if l2_line.strip() else "&nbsp;"
 
-                    bilingual_table_html = f"""
-                    <table class="bilingual-table">
-                        <tbody>
-                            {table_rows}
-                        </tbody>
-                    </table>
-                    """
+                # Commentary links
+                for match in re.findall(r"highlightCommentary\('([^\']+)'\)", l1_html):
+                    if match not in commentaries:
+                        comment_text = markdown_to_html(
+                            read_markdown_file(os.path.join(parasha_path, "perusim", f"{match}.md"))
+                        )
+                        prefix = f"<strong>{chapter}:{verse}</strong> " if lang2 == "HU" else ""
+                        commentaries[match] = prefix + comment_text
 
-                    # Process Commentaries in Order of First Appearance
-                    commentary_html = "".join(f'<div id="{file_id}" class="commentary">{text}</div><hr>' for file_id, text in commentaries.items())
+                table_rows += f"<tr><td class='{lang1.lower()}'>{l1_html}</td><td class='{lang2.lower()}'>{l2_html}</td></tr>\n"
 
-                    # Read template
-                    with open("templates/parasha.html", "r", encoding="utf-8") as f:
-                        page_template = f.read()
+            bilingual_table_html = f"""
+            <table class="bilingual-table">
+                <tbody>
+                    {table_rows}
+                </tbody>
+            </table>
+            """
 
-                    # Generate final HTML
-                    page_html = page_template.format(
-                        title=parasha,
-                        nav_structure=nav_html,
-                        bilingual_content=bilingual_table_html,
-                        commentary=commentary_html
-                    )
+            commentary_html = "".join(
+                f'<div id="{cid}" class="commentary">{text}</div><hr>' for cid, text in commentaries.items()
+            )
 
-                    with open(os.path.join(OUTPUT_PATH, filename), "w", encoding="utf-8") as f:
-                        f.write(page_html)
+            with open("templates/parasha.html", "r", encoding="utf-8") as f:
+                page_template = f.read()
 
-    # Generate Index Page
+            page_html = page_template.format(
+                title=parasha,
+                nav_structure=nav_html,
+                bilingual_content=bilingual_table_html,
+                commentary=commentary_html
+            )
+
+            with open(os.path.join(out_path, filename), "w", encoding="utf-8") as f:
+                f.write(page_html)
+
+    # Index page
     with open("templates/index.html", "r", encoding="utf-8") as f:
         index_template = f.read()
-
-    with open(os.path.join(OUTPUT_PATH, "index.html"), "w", encoding="utf-8") as f:
+    with open(os.path.join(out_path, "index.html"), "w", encoding="utf-8") as f:
         f.write(index_template.format(nav_structure=nav_html))
 
-    copy_static_files()  # ✅ Copy CSS & JS
-    print("✅ Static site generated.")
+
+def generate_html():
+    """Generate Hebrew-English (root) and Hebrew-Hungarian (hu/) HTML sites."""
+    if os.path.exists(OUTPUT_PATH):
+        shutil.rmtree(OUTPUT_PATH)
+
+    generate_bilingual_html("HE", "EN", "")
+    generate_bilingual_html("HE", "HU", "hu")
+    copy_static_files()
+    print("✅ Bilingual sites generated.")
+
 
 

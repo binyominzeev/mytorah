@@ -15,7 +15,7 @@ body {
     padding-left: 15px;
     width: 50%;
 }
-.hungarian p {
+.hu p, .en p {
   font-size: 20px;
 }
 td h1 {
@@ -82,8 +82,11 @@ td h1 {
 .column {
     width: 48%;
 }
-
-.hebrew {
+.he h1 {
+    text-align: right;
+    direction: rtl;
+}
+.he p {
     text-align: right;
     direction: rtl;
     font-size: 26px;
