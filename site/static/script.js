@@ -1,4 +1,11 @@
 document.addEventListener("DOMContentLoaded", function () {
+    const toggleButton = document.getElementById("menu-toggle");
+    const sidebar = document.getElementById("sidebar");
+
+    toggleButton.addEventListener("click", () => {
+        sidebar.classList.toggle("active");
+    });
+    
     const chapterIndicator = document.getElementById("chapter-indicator");
     const chapters = document.querySelectorAll(".bilingual-table tr"); // All chapter rows
 
@@ -8,11 +15,17 @@ document.addEventListener("DOMContentLoaded", function () {
         // Loop through all chapter headings
         for (let i = 0; i < chapters.length; i++) {
             const row = chapters[i];
-            const hungarianHeading = row.querySelector("td.hungarian h1");
+            const hungarianHeading = row.querySelector("td.chapter-heading h1");
 
             if (hungarianHeading) {
                 const hungarianText = hungarianHeading.innerText.trim();
-                const chapterMatch = hungarianText.match(/^(\d+)\. fejezet/);
+                // Try Hungarian pattern first
+				let chapterMatch = hungarianText.match(/^(\d+)\. fejezet/);
+
+				// If not Hungarian, try English
+				if (!chapterMatch) {
+					chapterMatch = hungarianText.match(/^Chapter (\d+)/);
+				}
 
                 if (chapterMatch) {
                     const chapterNumber = chapterMatch[1];
@@ -37,11 +50,17 @@ document.addEventListener("DOMContentLoaded", function () {
     // ✅ Set the first chapter on page load
     function setInitialChapter() {
         for (let row of chapters) {
-            const hungarianHeading = row.querySelector("td.hungarian h1");
+            const hungarianHeading = row.querySelector("td.chapter-heading h1");
 
             if (hungarianHeading) {
                 const hungarianText = hungarianHeading.innerText.trim();
-                const chapterMatch = hungarianText.match(/^(\d+)\. fejezet/);
+                // Try Hungarian pattern first
+				let chapterMatch = hungarianText.match(/^(\d+)\. fejezet/);
+
+				// If not Hungarian, try English
+				if (!chapterMatch) {
+					chapterMatch = hungarianText.match(/^Chapter (\d+)/);
+				}
 
                 if (chapterMatch) {
                     const firstChapter = chapterMatch[1];

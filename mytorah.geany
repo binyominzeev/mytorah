@@ -27,14 +27,9 @@ long_line_behaviour=1
 long_line_column=72
 
 [files]
-current_page=6
-FILE_NAME_0=0;Python;0;EUTF-8;1;1;1;%2Fhome%2Fbz%2FDesktop%2Faktualis%2Fmytorah%2Fupload.py;0;4
-FILE_NAME_1=6573;Python;0;EUTF-8;1;1;1;%2Fhome%2Fbz%2FDesktop%2Faktualis%2Fmytorah%2Futils%2Fsite_generator.py;0;4
-FILE_NAME_2=6733;Python;0;EUTF-8;1;1;1;%2Fhome%2Fbz%2FDesktop%2Faktualis%2Fmytorah%2Futils%2Fsite_generator%20%28copy%29.py;0;4
-FILE_NAME_3=1736;Python;0;EUTF-8;1;1;1;%2Fhome%2Fbz%2FDesktop%2Faktualis%2Fmytorah%2Futils%2Fftp_upload.py;0;4
-FILE_NAME_4=1668;CSS;0;EUTF-8;1;1;1;%2Fhome%2Fbz%2FDesktop%2Faktualis%2Fmytorah%2Fstatic%2Fstyles.css;0;4
-FILE_NAME_5=181;HTML;0;EUTF-8;1;1;1;%2Fhome%2Fbz%2FDesktop%2Faktualis%2Fmytorah%2Ftemplates%2Findex.html;0;4
-FILE_NAME_6=193;HTML;0;EUTF-8;1;1;1;%2Fhome%2Fbz%2FDesktop%2Faktualis%2Fmytorah%2Ftemplates%2Fparasha.html;0;4
+current_page=1
+FILE_NAME_0=8245;Python;0;EUTF-8;1;1;1;%2Fhome%2Fbz%2FDesktop%2Faktualis%2Fmytorah%2Futils%2Fsite_generator.py;0;4
+FILE_NAME_1=2106;Javascript;0;EUTF-8;1;1;1;%2Fhome%2Fbz%2FDesktop%2Faktualis%2Fmytorah%2Fstatic%2Fscript.js;0;4
 
 [VTE]
 last_dir=/home/bz

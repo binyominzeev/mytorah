@@ -133,69 +133,49 @@ td h1 {
     padding: 10px;
 }
 
-/* 📱 MOBILE RESPONSIVENESS */
-@media (max-width: 768px) {
-    body {
-        grid-template-columns: 1fr;
-        grid-template-rows: auto auto 1fr;
-    }
-    .content {
-        width: 100%;  
-        margin-right: 0;  /* Remove margin */
-    }
-
-    .commentary-container {
-        position: relative;  /* Allow scrolling with the page */
-        width: 100%;  
-        height: auto;
-        border-left: none;
-        border-top: 2px solid #ccc;
-    }
-
-    #sidebar {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 250px;
-        height: 100vh;
-        background: white;
-        transform: translateX(-100%);
-        box-shadow: 2px 0px 5px rgba(0,0,0,0.2);
-    }
-
-    #sidebar.open {
-        transform: translateX(0);
-    }
-
-    #torah-text {
-        flex-direction: column;
-    }
-
-    .column {
-        width: 100%;
-    }
-
-    #commentary {
-        order: 3;
-    }
-}
-
 /* 🎭 Sidebar Toggle Button */
 #menu-toggle {
     display: none;
-    position: absolute;
-    left: 10px;
-    top: 10px;
-    background: #007bff;
-    color: white;
-    padding: 10px;
-    border: none;
-    cursor: pointer;
 }
 
+/* Hide sidebar on small screens */
 @media (max-width: 768px) {
+    #sidebar {
+        transform: translateX(-100%);
+        position: fixed;
+        z-index: 1000;
+    }
+
+    #sidebar.active {
+        transform: translateX(0);
+    }
+
     #menu-toggle {
-        display: block;
+        display: block !important;
+        position: fixed;
+        top: 1rem;
+        left: 1rem;
+        background: #333;
+        color: white;
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 5px;
+        z-index: 1100;
+    }
+    
+    .he p {
+    	font-size:17px;
+    }
+    
+    .en p, .hu p {
+    	font-size:13px;
+    }
+
+    .content,
+    .commentary-container {
+        margin-left: 0 !important;
+        padding: 1rem;
+        font-size: 0.6em;
     }
 }
 

@@ -92,6 +92,18 @@ def generate_nav_structure():
     nav_html += "</ul>"
     return nav_html
 
+def extract_chapter_verse_en(line, current_chapter, current_verse):
+    """Extracts chapter and verse numbers from a line in HU.md"""
+    chapter_match = re.match(r"# Chapter (\d+)", line)
+    verse_match = re.match(r"\*\*(\d+)\.\*\*", line)
+
+    if chapter_match:
+        return int(chapter_match.group(1)), 0  # Reset verse when chapter changes
+    elif verse_match:
+        return current_chapter, int(verse_match.group(1))
+    
+    return current_chapter, current_verse  # Keep last known values
+
 def extract_chapter_verse_hu(line, current_chapter, current_verse):
     """Extracts chapter and verse numbers from a line in HU.md"""
     chapter_match = re.match(r"# (\d+)\. fejezet", line)
@@ -139,24 +151,42 @@ def generate_bilingual_html(lang1, lang2, output_subdir=""):
             table_rows = ""
             chapter = verse = 0
             commentaries = OrderedDict()
-
+            
             for l1_line, l2_line in zip(lang1_lines, lang2_lines):
                 if lang2 == "HU":
                     chapter, verse = extract_chapter_verse_hu(l2_line, chapter, verse)
 
+                if lang2 == "EN":
+                    chapter, verse = extract_chapter_verse_en(l2_line, chapter, verse)
+
                 l1_html = markdown_to_html(l1_line.strip()) if l1_line.strip() else "&nbsp;"
                 l2_html = markdown_to_html(l2_line.strip()) if l2_line.strip() else "&nbsp;"
 
-                # Commentary links
-                for match in re.findall(r"highlightCommentary\('([^\']+)'\)", l1_html):
-                    if match not in commentaries:
-                        comment_text = markdown_to_html(
-                            read_markdown_file(os.path.join(parasha_path, "perusim", f"{match}.md"))
-                        )
-                        prefix = f"<strong>{chapter}:{verse}</strong> " if lang2 == "HU" else ""
-                        commentaries[match] = prefix + comment_text
+                current_verse = verse  # Save a local verse counter
 
-                table_rows += f"<tr><td class='{lang1.lower()}'>{l1_html}</td><td class='{lang2.lower()}'>{l2_html}</td></tr>\n"
+                # Define a replacement function that updates the verse each time
+                def replace_strong_with_link(match):
+                    nonlocal current_verse
+                    verse_id = f"ch{chapter}-vrs{current_verse}"
+                    text_inside = match.group(1)
+                    result = f"<a id='{verse_id}' href='#{verse_id}'><strong>{text_inside}</strong></a>"
+                    current_verse += 1  # Increment after each replacement
+                    return result
+
+                # Apply replacement for l1 and l2
+                l1_html = re.sub(r"<strong>\{(.*?)\}</strong>", replace_strong_with_link, l1_html)
+                l2_html = re.sub(r"<strong>\{(.*?)\}</strong>", replace_strong_with_link, l2_html)
+
+                # Commentary links should be collected from lang2 (e.g., HU or EN)
+                for match in re.findall(r"highlightCommentary\('([^\']+)'\)", l2_html):
+                    if match not in commentaries:
+                        comment_path = os.path.join(parasha_path, "perusim", f"{match}.md")
+                        if os.path.exists(comment_path):
+                            comment_text = markdown_to_html(read_markdown_file(comment_path))
+                            prefix = f"<a href='#ch{chapter}-vrs{current_verse}'><strong>{chapter}:{current_verse}</strong></a> "
+                            commentaries[match] = prefix + comment_text
+
+                table_rows += f"<tr><td class='{lang1.lower()}'>{l1_html}</td><td class='{lang2.lower()} chapter-heading'>{l2_html}</td></tr>\n"
 
             bilingual_table_html = f"""
             <table class="bilingual-table">
