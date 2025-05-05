@@ -5,8 +5,8 @@ import re
 # Map Parasha to its Torah portion (you can expand this dictionary)
 PARASHA_TO_REF = {
     "Mecora": "Leviticus 14-15",
-    "Tecáve": "Exodus 27:20-30:10",
-    "Ki tiszá": "Exodus 30:11-34:35",
+    "Achare": "Leviticus 16-18",
+    "Kedoshim": "Leviticus 19-20",
     # Add more as needed
 }
 
@@ -65,5 +65,5 @@ def download_parasha_english(parasha_name):
     print(f"✅ English translation for '{parasha_name}' saved to {filename}")
 
 # Example usage:
-download_parasha_english("Mecora")
+download_parasha_english("Kedoshim")
 

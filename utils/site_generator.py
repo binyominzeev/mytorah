@@ -169,7 +169,11 @@ def generate_bilingual_html(lang1, lang2, output_subdir=""):
                     nonlocal current_verse
                     verse_id = f"ch{chapter}-vrs{current_verse}"
                     text_inside = match.group(1)
-                    result = f"<a id='{verse_id}' href='#{verse_id}'><strong>{text_inside}</strong></a>"
+                    sefaria_link = f"https://www.sefaria.org/Leviticus.{chapter}.{current_verse}?lang=bi&with=all&lang2=en"
+                    result = (
+                        f"<a id='{verse_id}' href='#{verse_id}' onclick=\"showSefariaLink({chapter}, {current_verse})\">"
+                        f"<strong>{text_inside}</strong></a>"
+                    )
                     current_verse += 1  # Increment after each replacement
                     return result
 

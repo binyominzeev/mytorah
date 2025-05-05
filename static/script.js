@@ -76,6 +76,13 @@ document.addEventListener("DOMContentLoaded", function () {
     setInitialChapter(); // ✅ Show the first chapter immediately
 });
 
+function showSefariaLink(chapter, verse) {
+    const sefariaBox = document.getElementById("sefaria-box");
+    const sefariaLink = document.getElementById("sefaria-link");
+
+    sefariaLink.href = `https://www.sefaria.org/Leviticus.${chapter}.${verse}?lang=bi&with=all&lang2=en`;
+    sefariaBox.style.display = "block";
+}
 
 // 📌 Toggle Language Visibility
 function toggleLang(lang) {

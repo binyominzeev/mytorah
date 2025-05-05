@@ -28,8 +28,10 @@ long_line_column=72
 
 [files]
 current_page=1
-FILE_NAME_0=8245;Python;0;EUTF-8;1;1;1;%2Fhome%2Fbz%2FDesktop%2Faktualis%2Fmytorah%2Futils%2Fsite_generator.py;0;4
-FILE_NAME_1=2106;Javascript;0;EUTF-8;1;1;1;%2Fhome%2Fbz%2FDesktop%2Faktualis%2Fmytorah%2Fstatic%2Fscript.js;0;4
+FILE_NAME_0=7313;Python;0;EUTF-8;1;1;1;%2Fhome%2Fbz%2FDesktop%2Faktualis%2Fmytorah%2Futils%2Fsite_generator.py;0;4
+FILE_NAME_1=809;HTML;0;EUTF-8;1;1;1;%2Fhome%2Fbz%2FDesktop%2Faktualis%2Fmytorah%2Ftemplates%2Fparasha.html;0;4
+FILE_NAME_2=1798;Javascript;0;EUTF-8;1;1;1;%2Fhome%2Fbz%2FDesktop%2Faktualis%2Fmytorah%2Fstatic%2Fscript.js;0;4
+FILE_NAME_3=484;CSS;0;EUTF-8;1;1;1;%2Fhome%2Fbz%2FDesktop%2Faktualis%2Fmytorah%2Fstatic%2Fstyles.css;0;4
 
 [VTE]
 last_dir=/home/bz
