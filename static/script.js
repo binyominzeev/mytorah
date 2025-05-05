@@ -76,11 +76,11 @@ document.addEventListener("DOMContentLoaded", function () {
     setInitialChapter(); // ✅ Show the first chapter immediately
 });
 
-function showSefariaLink(chapter, verse) {
+function showSefariaLink(chapter, verse, book) {
     const sefariaBox = document.getElementById("sefaria-box");
     const sefariaLink = document.getElementById("sefaria-link");
 
-    sefariaLink.href = `https://www.sefaria.org/Leviticus.${chapter}.${verse}?lang=bi&with=all&lang2=en`;
+    sefariaLink.href = `https://www.sefaria.org/${book}.${chapter}.${verse}?lang=bi&with=all&lang2=en`;
     sefariaBox.style.display = "block";
 }
 
