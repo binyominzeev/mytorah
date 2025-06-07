@@ -1,3 +1,11 @@
+function googleanalytics() {
+	  window.dataLayer = window.dataLayer || [];
+	  function gtag(){ dataLayer.push(arguments);}
+	  gtag('js', new Date());
+
+	  gtag('config', 'G-H8D9YRFC61');
+}
+
 document.addEventListener("DOMContentLoaded", function () {
     const toggleButton = document.getElementById("menu-toggle");
     const sidebar = document.getElementById("sidebar");

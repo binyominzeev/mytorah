@@ -6,6 +6,10 @@ __pycache__/
 # C extensions
 *.so
 
+HE.odt
+HE.pdf
+lejn/
+
 # Distribution / packaging
 .Python
 build/
@@ -20,11 +24,13 @@ parts/
 sdist/
 var/
 wheels/
+torlendo/
 share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
+config.py
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -142,9 +148,6 @@ venv.bak/
 
 # Rope project settings
 .ropeproject
-
-# mkdocs documentation
-/site
 
 # mypy
 .mypy_cache/

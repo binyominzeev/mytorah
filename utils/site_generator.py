@@ -199,8 +199,9 @@ def generate_bilingual_html(lang1, lang2, output_subdir=""):
                         comment_path = os.path.join(parasha_path, "perusim", f"{match}.md")
                         if os.path.exists(comment_path):
                             comment_text = markdown_to_html(read_markdown_file(comment_path))
-                            prefix = f"<a href='#ch{chapter}-vrs{current_verse}'><strong>{chapter}:{current_verse}</strong></a> "
-                            commentaries[match] = prefix + comment_text
+                            #prefix = f"<a href='#ch{chapter}-vrs{current_verse}'><strong>{chapter}:{current_verse}</strong></a> "
+                            #commentaries[match] = prefix + comment_text
+                            commentaries[match] = comment_text
 
                 table_rows += f"<tr><td class='{lang1.lower()}'>{l1_html}</td><td class='{lang2.lower()} chapter-heading'>{l2_html}</td></tr>\n"
 
