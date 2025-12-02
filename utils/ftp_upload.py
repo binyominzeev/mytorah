@@ -1,6 +1,7 @@
 from ftplib import FTP, error_perm
 import os
 from config import FTP_HOST, FTP_USER, FTP_PASS, FTP_DIR, OUTPUT_PATH
+import time
 
 def remote_file_size(ftp, filename):
     """Return the size of a remote file, or None if it doesn't exist."""
@@ -8,6 +9,19 @@ def remote_file_size(ftp, filename):
         return ftp.size(filename)
     except Exception:
         return None
+
+def remote_file_mtime(ftp, filename):
+    """Return the last modified time of a remote file as a float timestamp, or None if not available."""
+    try:
+        resp = ftp.sendcmd(f"MDTM {filename}")
+        if resp.startswith("213 "):
+            # Format: 213 YYYYMMDDHHMMSS
+            timestr = resp[4:].strip()
+            t = time.strptime(timestr, "%Y%m%d%H%M%S")
+            return time.mktime(t)
+    except Exception:
+        pass
+    return None
 
 def upload_directory(ftp, local_path, remote_path, level=0):
     """Recursively upload only new or changed files to the FTP server."""
@@ -41,10 +55,14 @@ def upload_directory(ftp, local_path, remote_path, level=0):
         else:
             upload = False
             local_size = os.path.getsize(local_item)
+            local_mtime = os.path.getmtime(local_item)
             remote_size = None
+            remote_mtime = None
             if item in remote_files:
                 remote_size = remote_file_size(ftp, item)
-                if remote_size != local_size:
+                remote_mtime = remote_file_mtime(ftp, item)
+                # Compare size and mtime (allowing 2s tolerance for FTP time rounding)
+                if remote_size != local_size or (remote_mtime is not None and abs(remote_mtime - local_mtime) > 2):
                     upload = True
             else:
                 upload = True
