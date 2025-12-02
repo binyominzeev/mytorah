@@ -187,3 +187,16 @@ td h1 {
     }
 }
 
+/* Hide commentary-container on small screens */
+@media (max-width: 1399px) {
+  .commentary-container {
+    display: none !important;
+  }
+  #show-commentary-btn {
+    display: block;
+  }
+  .content {
+    width: 600px !important;
+  }
+}
+

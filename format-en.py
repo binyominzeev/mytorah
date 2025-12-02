@@ -6,7 +6,7 @@ import re
 PARASHA_TO_REF = {
     "Yitro": "Exodus 18-20",
     "Naso": "Numbers 4:21-7:89",
-    "Behaal": "Numbers 8-12",
+    "Slach": "Numbers 25-30",
     # Add more as needed
 }
 
@@ -65,5 +65,5 @@ def download_parasha_english(parasha_name):
     print(f"✅ English translation for '{parasha_name}' saved to {filename}")
 
 # Example usage:
-download_parasha_english("Behaal")
+download_parasha_english("Slach")
 

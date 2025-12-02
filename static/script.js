@@ -116,4 +116,3 @@ function highlightCommentary(commentaryId) {
         }, 1500);
     }
 }
-
