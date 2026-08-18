@@ -30,6 +30,28 @@ Then open http://localhost:8000/index.html (or http://localhost:8000/hu/index.ht
 Hungarian version) in a browser. Use your browser's device toolbar (responsive mode) to test the
 mobile/tablet layout.
 
+## Deploy
+
+Run the generator and FTP synchronisation from the project root:
+
+```bash
+python3 upload.py
+```
+
+The synchronisation uses plain FTP and stores a `.mytorah-manifest.json` file in the
+configured remote directory. After the first full upload, only files whose SHA-256 hash
+changed are uploaded. Remote files that no longer exist locally are not deleted.
+
+To inspect the planned changes without uploading files:
+
+```bash
+python3 upload.py --dry-run
+```
+
+FTP credentials are read from the local `config.py`, which is excluded from Git. Do not
+commit that file or share its contents. Because plain FTP is unencrypted, use it only when
+the hosting environment requires it and rotate the password if it has been exposed.
+
 It is written together with ChatGPT:
 
 https://chatgpt.com/share/67ca0b33-bbc0-8002-9da7-a5df08bc731c

@@ -5,7 +5,11 @@ from config import VAULT_PATH, OUTPUT_PATH
 import re
 import unicodedata
 import json
+import tempfile
 from collections import OrderedDict
+from itertools import zip_longest
+
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 SEFARIA_BOOK_MAP = {
     "1 Berésit": "Genesis",
@@ -20,10 +24,10 @@ def remove_accents(text):
     normalized = unicodedata.normalize('NFD', text)  # Decomposes accents
     return re.sub(r'[\u0300-\u036f]', '', normalized)  # Removes diacritic marks
 
-def copy_static_files():
+def copy_static_files(output_root):
     """Copy static assets (CSS, JS) to the output folder"""
     static_src = os.path.join(os.path.dirname(__file__), "..", "static")  # Path to static folder
-    static_dst = os.path.join(OUTPUT_PATH, "static")  # Destination in output
+    static_dst = os.path.join(output_root, "static")
 
     if os.path.exists(static_dst):
         shutil.rmtree(static_dst)  # Remove old static files
@@ -40,7 +44,7 @@ def load_custom_sort():
         sortspec = next((item for item in data["items"] if item.get("title") == "sortspec"), None)
         if not sortspec:
             print("⚠ Custom sort order not found, using default alphabetical order.")
-            return None
+            return {}
 
         book_order = {}
         for book in sortspec["items"]:
@@ -52,7 +56,7 @@ def load_custom_sort():
 
     except Exception as e:
         print(f"⚠ Error loading bookmarks.json: {e}")
-        return None
+        return {}
 
 def generate_nav_structure():
     """Generate the navigation HTML using the custom order where available, falling back to alphabetical otherwise."""
@@ -61,8 +65,9 @@ def generate_nav_structure():
 
     # Get the actual books and parashiyot from the vault
     books_in_vault = {
-        book: sorted(os.listdir(os.path.join(VAULT_PATH, book))) 
-        for book in os.listdir(VAULT_PATH) if not book.startswith(".")
+        book: sorted(os.listdir(os.path.join(VAULT_PATH, book)))
+        for book in os.listdir(VAULT_PATH)
+        if not book.startswith(".") and os.path.isdir(os.path.join(VAULT_PATH, book))
     }
 
     # Process books (custom order first, then add missing books)
@@ -124,9 +129,9 @@ def extract_chapter_verse_hu(line, current_chapter, current_verse):
     
     return current_chapter, current_verse  # Keep last known values
 
-def generate_bilingual_html(lang1, lang2, output_subdir=""):
+def generate_bilingual_html(lang1, lang2, output_subdir="", output_root=OUTPUT_PATH):
     """Generate bilingual HTML pages for two languages and save them under the specified subdirectory."""
-    out_path = os.path.join(OUTPUT_PATH, output_subdir)
+    out_path = os.path.join(output_root, output_subdir)
     os.makedirs(out_path, exist_ok=True)
 
     nav_html = generate_nav_structure()
@@ -154,13 +159,18 @@ def generate_bilingual_html(lang1, lang2, output_subdir=""):
 
             lang1_lines = remove_cssclasses(read_markdown_file(file1)).split("\n")
             lang2_lines = remove_cssclasses(read_markdown_file(file2)).split("\n")
+            if len(lang1_lines) != len(lang2_lines):
+                print(
+                    f"⚠ Language files have different line counts: {file1} ({len(lang1_lines)}) "
+                    f"and {file2} ({len(lang2_lines)}); preserving all lines."
+                )
 
             filename = remove_accents(parasha) + ".html"
             table_rows = ""
             chapter = verse = 0
             commentaries = OrderedDict()
             
-            for l1_line, l2_line in zip(lang1_lines, lang2_lines):
+            for l1_line, l2_line in zip_longest(lang1_lines, lang2_lines, fillvalue=""):
                 if lang2 == "HU":
                     chapter, verse = extract_chapter_verse_hu(l2_line, chapter, verse)
 
@@ -217,7 +227,7 @@ def generate_bilingual_html(lang1, lang2, output_subdir=""):
                 f'<div id="{cid}" class="commentary">{text}</div><hr>' for cid, text in commentaries.items()
             )
 
-            with open("templates/parasha.html", "r", encoding="utf-8") as f:
+            with open(os.path.join(REPO_ROOT, "templates", "parasha.html"), "r", encoding="utf-8") as f:
                 page_template = f.read()
 
             page_html = page_template.format(
@@ -231,7 +241,7 @@ def generate_bilingual_html(lang1, lang2, output_subdir=""):
                 f.write(page_html)
 
     # Index page
-    with open("templates/index.html", "r", encoding="utf-8") as f:
+    with open(os.path.join(REPO_ROOT, "templates", "index.html"), "r", encoding="utf-8") as f:
         index_template = f.read()
     with open(os.path.join(out_path, "index.html"), "w", encoding="utf-8") as f:
         f.write(index_template.format(nav_structure=nav_html))
@@ -239,12 +249,28 @@ def generate_bilingual_html(lang1, lang2, output_subdir=""):
 
 def generate_html():
     """Generate Hebrew-English (root) and Hebrew-Hungarian (hu/) HTML sites."""
-    if os.path.exists(OUTPUT_PATH):
-        shutil.rmtree(OUTPUT_PATH)
+    output_parent = os.path.dirname(os.path.abspath(OUTPUT_PATH))
+    temporary_output = tempfile.mkdtemp(prefix=".site-build-", dir=output_parent)
+    backup_output = f"{OUTPUT_PATH}.previous"
+    moved_previous_output = False
+    try:
+        generate_bilingual_html("HE", "EN", "", temporary_output)
+        generate_bilingual_html("HE", "HU", "hu", temporary_output)
+        copy_static_files(temporary_output)
 
-    generate_bilingual_html("HE", "EN", "")
-    generate_bilingual_html("HE", "HU", "hu")
-    copy_static_files()
+        if os.path.exists(backup_output):
+            shutil.rmtree(backup_output)
+        if os.path.exists(OUTPUT_PATH):
+            os.replace(OUTPUT_PATH, backup_output)
+            moved_previous_output = True
+        os.replace(temporary_output, OUTPUT_PATH)
+        if os.path.exists(backup_output):
+            shutil.rmtree(backup_output)
+    except Exception:
+        shutil.rmtree(temporary_output, ignore_errors=True)
+        if moved_previous_output and not os.path.exists(OUTPUT_PATH):
+            os.replace(backup_output, OUTPUT_PATH)
+        raise
     print("✅ Bilingual sites generated.")
 
 
