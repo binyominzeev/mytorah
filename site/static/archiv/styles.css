@@ -1,0 +1,204 @@
+/* 🎨 General Styles */
+body {
+    font-family: Arial, sans-serif;
+    display: grid;
+    grid-template-columns: 250px 1fr 300px;
+    grid-template-rows: auto 1fr;
+    gap: 10px;
+    padding: 0;
+    margin: 0;
+    height: 100vh;
+}
+.bilingual-table td {
+    vertical-align: top;
+    padding-right: 15px;
+    padding-left: 15px;
+    width: 50%;
+}
+#sefaria-box {
+    margin: 1rem;
+    padding: 1rem;
+    border: 1px solid #ccc;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+}
+
+.hu p, .en p {
+  font-size: 20px;
+  line-height: 1.3em;
+}
+td h1 {
+  margin: 0;
+}
+
+.content {
+    width: calc(100% - 27%);  /* Adjust width dynamically */
+    margin-right: 27%;  /* Same as the commentary width */
+    padding: 20px;
+    box-sizing: border-box;  /* Ensures padding doesn’t affect width */
+}
+
+.commentary-container {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 25%;  /* Keep commentary width fixed */
+    height: 100vh;
+    overflow-y: auto;
+    background: #eef;
+    padding: 15px;
+    border-left: 1px solid #ccc;
+}
+
+.commentary {
+    padding: 10px;
+    margin-bottom: 20px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+/* Highlight effect when linked */
+@keyframes blinkEffect {
+    0% { background-color: yellow; }
+    50% { background-color: transparent; }
+    100% { background-color: yellow; }
+}
+
+.blink {
+    animation: blinkEffect 1.5s ease-in-out;
+}
+
+
+/* 🎭 Sidebar (Navigation) */
+#sidebar {
+    background: #f8f9fa;
+    padding: 10px;
+    overflow-y: auto;
+    transition: transform 0.3s ease-in-out;
+}
+
+/* 📜 Torah Text */
+#torah-text {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 20px;
+}
+
+/* 📖 Two Column Layout */
+.column {
+    width: 48%;
+}
+.he h1 {
+    text-align: right;
+    direction: rtl;
+}
+.he p {
+    text-align: right;
+    direction: rtl;
+    font-size: 28px;
+    font-family: "Taamey Frank CLM";
+    line-height: 1.5em;
+}
+
+#chapter-indicator {
+    position: fixed;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 8px 16px;
+    font-size: 18px;
+    border-radius: 8px;
+    z-index: 1000;
+    transition: opacity 0.3s ease-in-out;
+}
+
+/* Hide when no chapter is visible */
+.hidden {
+    opacity: 0;
+}
+
+
+/* 🔦 Blinking Effect */
+@keyframes blink {
+    0% { background-color: yellow; }
+    50% { background-color: none; }
+    100% { background-color: yellow; }
+}
+
+/* 💬 Commentary Section */
+#commentary {
+    background: #eef;
+    padding: 10px;
+    overflow-y: auto;
+}
+
+/* 🎛️ Control Buttons */
+.controls {
+    text-align: center;
+    padding: 10px;
+}
+
+/* 🎭 Sidebar Toggle Button */
+#menu-toggle {
+    display: none;
+}
+
+/* Hide sidebar on small screens */
+@media (max-width: 768px) {
+    #sidebar {
+        transform: translateX(-100%);
+        position: fixed;
+        z-index: 1000;
+    }
+
+    #sidebar.active {
+        transform: translateX(0);
+    }
+
+    #menu-toggle {
+        display: block !important;
+        position: fixed;
+        top: 1rem;
+        left: 1rem;
+        background: #333;
+        color: white;
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 5px;
+        z-index: 1100;
+    }
+    
+    .he p {
+    	font-size:17px;
+    }
+    
+    .en p, .hu p {
+    	font-size:13px;
+    }
+
+    .content,
+    .commentary-container {
+        margin-left: 0 !important;
+        padding: 1rem;
+        font-size: 0.6em;
+    }
+}
+
+/* Hide commentary-container on small screens */
+@media (max-width: 1399px) {
+  .commentary-container {
+    display: none !important;
+  }
+  #show-commentary-btn {
+    display: block;
+  }
+  .content {
+    width: 600px !important;
+  }
+}
+

@@ -16,6 +16,20 @@ It can:
 - Take the commentaries and implement them into the text
 - Get them together in a comment sidebar and clickable inner link
 
+## Local test server
+
+The generated site (`site/`) uses absolute paths like `/static/styles.css`, so it must be served
+from its own folder as the web root, not just opened as a `file://` page (otherwise the CSS/JS
+won't load). Run this from the project root:
+
+```bash
+python3 -m http.server 8000 --directory site
+```
+
+Then open http://localhost:8000/index.html (or http://localhost:8000/hu/index.html for the
+Hungarian version) in a browser. Use your browser's device toolbar (responsive mode) to test the
+mobile/tablet layout.
+
 It is written together with ChatGPT:
 
 https://chatgpt.com/share/67ca0b33-bbc0-8002-9da7-a5df08bc731c

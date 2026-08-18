@@ -62,7 +62,7 @@ def upload_directory(ftp, local_path, remote_path, level=0):
                 remote_size = remote_file_size(ftp, item)
                 remote_mtime = remote_file_mtime(ftp, item)
                 # Compare size and mtime (allowing 2s tolerance for FTP time rounding)
-                if remote_size != local_size or (remote_mtime is not None and abs(remote_mtime - local_mtime) > 2):
+                if remote_size != local_size:
                     upload = True
             else:
                 upload = True
