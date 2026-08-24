@@ -6,6 +6,7 @@ import re
 import unicodedata
 import json
 import tempfile
+import hashlib
 from collections import OrderedDict
 from itertools import zip_longest
 
@@ -35,6 +36,21 @@ def copy_static_files(output_root):
     shutil.copytree(static_src, static_dst)  # Copy entire static directory
     print("✅ Static assets copied.")
 
+def compute_static_version():
+    """Hash the static assets so their URLs can be cache-busted on every change."""
+    static_src = os.path.join(REPO_ROOT, "static")
+    digest = hashlib.sha256()
+    for name in ("styles.css", "script.js"):
+        with open(os.path.join(static_src, name), "rb") as f:
+            digest.update(f.read())
+    return digest.hexdigest()[:10]
+
+def add_cache_busting(html, static_version):
+    """Append a version query string to static asset URLs so browsers fetch fresh copies."""
+    html = html.replace("/static/styles.css", f"/static/styles.css?v={static_version}")
+    html = html.replace("/static/script.js", f"/static/script.js?v={static_version}")
+    return html
+
 def load_custom_sort():
     """Load the custom sort order from bookmarks.json."""
     try:
@@ -58,7 +74,24 @@ def load_custom_sort():
         print(f"⚠ Error loading bookmarks.json: {e}")
         return {}
 
-def generate_nav_structure():
+def has_parasha_content(book, parasha, lang2):
+    """Check whether a parasha folder actually has non-empty content files needed to generate a page."""
+    parasha_path = os.path.join(VAULT_PATH, book, parasha)
+    he_file = os.path.join(parasha_path, "HE.md")
+    lang2_file = os.path.join(parasha_path, f"{lang2}.md")
+    return (
+        os.path.exists(he_file) and os.path.getsize(he_file) > 0
+        and os.path.exists(lang2_file) and os.path.getsize(lang2_file) > 0
+    )
+
+def render_parasha_nav_item(book, parasha, lang2):
+    """Render a nav <li> for a parasha: a link if content exists, otherwise a disabled, unclickable entry."""
+    if has_parasha_content(book, parasha, lang2):
+        parasha_filename = remove_accents(parasha) + ".html"
+        return f'<li><a href="{parasha_filename}">{parasha}</a></li>'
+    return f'<li><span class="nav-unavailable" title="Tartalom hamarosan érkezik">{parasha}</span></li>'
+
+def generate_nav_structure(lang2="EN"):
     """Generate the navigation HTML using the custom order where available, falling back to alphabetical otherwise."""
     custom_order = load_custom_sort()
     nav_html = "<ul>"
@@ -81,15 +114,13 @@ def generate_nav_structure():
             processed_parashiyot = set()
             for parasha in parashiyot:
                 if parasha in books_in_vault[book]:
-                    parasha_filename = remove_accents(parasha) + ".html"
-                    nav_html += f'<li><a href="{parasha_filename}">{parasha}</a></li>'
+                    nav_html += render_parasha_nav_item(book, parasha, lang2)
                     processed_parashiyot.add(parasha)
 
             # Add any missing parashiyot in alphabetical order
             for parasha in sorted(books_in_vault[book]):
                 if parasha not in processed_parashiyot:
-                    parasha_filename = remove_accents(parasha) + ".html"
-                    nav_html += f'<li><a href="{parasha_filename}">{parasha}</a></li>'
+                    nav_html += render_parasha_nav_item(book, parasha, lang2)
 
             nav_html += "</ul></li>"
 
@@ -98,8 +129,7 @@ def generate_nav_structure():
         if book not in processed_books:
             nav_html += f"<li>{book}<ul>"
             for parasha in sorted(books_in_vault[book]):
-                parasha_filename = remove_accents(parasha) + ".html"
-                nav_html += f'<li><a href="{parasha_filename}">{parasha}</a></li>'
+                nav_html += render_parasha_nav_item(book, parasha, lang2)
             nav_html += "</ul></li>"
 
     nav_html += "</ul>"
@@ -129,12 +159,13 @@ def extract_chapter_verse_hu(line, current_chapter, current_verse):
     
     return current_chapter, current_verse  # Keep last known values
 
-def generate_bilingual_html(lang1, lang2, output_subdir="", output_root=OUTPUT_PATH):
+def generate_bilingual_html(lang1, lang2, output_subdir="", output_root=OUTPUT_PATH, static_version=None):
     """Generate bilingual HTML pages for two languages and save them under the specified subdirectory."""
     out_path = os.path.join(output_root, output_subdir)
     os.makedirs(out_path, exist_ok=True)
+    static_version = static_version or compute_static_version()
 
-    nav_html = generate_nav_structure()
+    nav_html = generate_nav_structure(lang2)
 
     for book in sorted(os.listdir(VAULT_PATH)):
         if book.startswith("."):
@@ -154,7 +185,10 @@ def generate_bilingual_html(lang1, lang2, output_subdir="", output_root=OUTPUT_P
 
             file1 = os.path.join(parasha_path, f"{lang1}.md")
             file2 = os.path.join(parasha_path, f"{lang2}.md")
-            if not (os.path.exists(file1) and os.path.exists(file2)):
+            if not (
+                os.path.exists(file1) and os.path.getsize(file1) > 0
+                and os.path.exists(file2) and os.path.getsize(file2) > 0
+            ):
                 continue
 
             lang1_lines = remove_cssclasses(read_markdown_file(file1)).split("\n")
@@ -236,6 +270,7 @@ def generate_bilingual_html(lang1, lang2, output_subdir="", output_root=OUTPUT_P
                 bilingual_content=bilingual_table_html,
                 commentary=commentary_html
             )
+            page_html = add_cache_busting(page_html, static_version)
 
             with open(os.path.join(out_path, filename), "w", encoding="utf-8") as f:
                 f.write(page_html)
@@ -243,8 +278,9 @@ def generate_bilingual_html(lang1, lang2, output_subdir="", output_root=OUTPUT_P
     # Index page
     with open(os.path.join(REPO_ROOT, "templates", "index.html"), "r", encoding="utf-8") as f:
         index_template = f.read()
+    index_html = add_cache_busting(index_template.format(nav_structure=nav_html), static_version)
     with open(os.path.join(out_path, "index.html"), "w", encoding="utf-8") as f:
-        f.write(index_template.format(nav_structure=nav_html))
+        f.write(index_html)
 
 
 def generate_html():
@@ -254,8 +290,9 @@ def generate_html():
     backup_output = f"{OUTPUT_PATH}.previous"
     moved_previous_output = False
     try:
-        generate_bilingual_html("HE", "EN", "", temporary_output)
-        generate_bilingual_html("HE", "HU", "hu", temporary_output)
+        static_version = compute_static_version()
+        generate_bilingual_html("HE", "EN", "", temporary_output, static_version)
+        generate_bilingual_html("HE", "HU", "hu", temporary_output, static_version)
         copy_static_files(temporary_output)
 
         if os.path.exists(backup_output):

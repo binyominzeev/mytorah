@@ -39,6 +39,10 @@
     }
     overlay.addEventListener('click', closeSidebar);
 
+    if(sidebar && isMobile()){
+        openSidebar();
+    }
+
     /* ---------------- sidebar: accordion + active link ---------------- */
     (function setupSidebarAccordion(){
         if(!sidebar) return;
@@ -151,8 +155,63 @@
         }
     };
 
+    /* wrap the plain text of each verse (between its marker and the next one)
+       in a <span class="verse-text vrs-ch{chapter}-vrs{verse}"> so the whole
+       verse - not just its number - can be highlighted */
+    function wrapVerseText(container, isVerseMarker, verseClassOf){
+        var nodes = Array.prototype.slice.call(container.childNodes);
+        var newOrder = [];
+        var currentSpan = null;
+        nodes.forEach(function(node){
+            if(isVerseMarker(node)){
+                newOrder.push(node);
+                currentSpan = document.createElement('span');
+                currentSpan.className = 'verse-text ' + verseClassOf(node);
+                newOrder.push(currentSpan);
+                return;
+            }
+            if(currentSpan){
+                currentSpan.appendChild(node);
+            } else {
+                newOrder.push(node);
+            }
+        });
+        newOrder.forEach(function(n){ container.appendChild(n); });
+    }
+
+    /* ---------------- verse hover highlight ---------------- */
+    function highlightVerseHover(chapter, verse){
+        var verseId = 'ch' + chapter + '-vrs' + verse;
+        var els = document.querySelectorAll('[id="' + verseId + '"], .vrs-' + verseId);
+        Array.prototype.forEach.call(els, function(el){ el.classList.add('verse-hover'); });
+    }
+    function clearVerseHover(){
+        Array.prototype.forEach.call(document.querySelectorAll('.verse-hover'), function(el){
+            el.classList.remove('verse-hover');
+        });
+    }
+
+    /* wrap hebrew verse text and hook up hover highlighting on the hebrew markers */
+    (function enhanceHebrewVerses(){
+        var paragraphs = document.querySelectorAll('.bilingual-table td.he p');
+        Array.prototype.forEach.call(paragraphs, function(p){
+            wrapVerseText(p,
+                function(node){ return node.nodeType === 1 && node.tagName === 'A' && /^ch\d+-vrs\d+$/.test(node.id || ''); },
+                function(node){ return 'vrs-' + node.id; }
+            );
+        });
+
+        var anchors = document.querySelectorAll('.bilingual-table td.he p > a[onclick]');
+        Array.prototype.forEach.call(anchors, function(a){
+            var m = /showSefariaLink\((\d+),\s*(\d+),/.exec(a.getAttribute('onclick') || '');
+            if(!m) return;
+            a.addEventListener('mouseenter', function(){ highlightVerseHover(m[1], m[2]); });
+            a.addEventListener('mouseleave', clearVerseHover);
+        });
+    })();
     /* wrap hungarian verse numbers ("10.", "11.") so they are clickable too,
-       matched positionally against the hebrew verse anchors in the same row */
+       matched positionally against the hebrew verse anchors in the same row,
+       and wrap the following hungarian verse text for hover/click highlighting */
     (function enhanceHungarianVerseNumbers(){
         var rows = document.querySelectorAll('.bilingual-table tr');
         Array.prototype.forEach.call(rows, function(tr){
@@ -196,8 +255,30 @@
                         window.showSefariaLink(info.chapter, info.verse, info.book);
                     }
                 });
+                strong.addEventListener('mouseenter', function(){ highlightVerseHover(info.chapter, info.verse); });
+                strong.addEventListener('mouseleave', clearVerseHover);
                 idx++;
             });
+
+            wrapVerseText(huP,
+                function(node){ return node.nodeType === 1 && node.classList && node.classList.contains('vrs-num'); },
+                function(node){
+                    var cls = Array.prototype.slice.call(node.classList).filter(function(c){ return /^vrs-ch\d+-vrs\d+$/.test(c); })[0];
+                    return cls || '';
+                }
+            );
+        });
+    })();
+
+    /* also highlight the whole verse when hovering directly over its text
+       (hebrew or hungarian), not just its number/marker */
+    (function enhanceVerseTextHover(){
+        var spans = document.querySelectorAll('.bilingual-table .verse-text');
+        Array.prototype.forEach.call(spans, function(span){
+            var m = /vrs-ch(\d+)-vrs(\d+)/.exec(span.className);
+            if(!m) return;
+            span.addEventListener('mouseenter', function(){ highlightVerseHover(m[1], m[2]); });
+            span.addEventListener('mouseleave', clearVerseHover);
         });
     })();
 
