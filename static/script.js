@@ -3,6 +3,7 @@
 
     var sidebar = document.getElementById('sidebar');
     var menuToggle = document.getElementById('menu-toggle');
+    var panelsToggle = document.getElementById('panels-toggle');
     var panel = document.querySelector('.commentary-container');
     var sefariaBox = document.getElementById('sefaria-box');
     var sefariaLink = document.getElementById('sefaria-link');
@@ -18,6 +19,31 @@
     };
 
     function isMobile(){ return window.innerWidth <= 980; }
+
+    function updatePanelsToggle(){
+        if(!panelsToggle) return;
+        var collapsed = document.body.classList.contains('panels-collapsed');
+        panelsToggle.setAttribute('aria-pressed', collapsed ? 'true' : 'false');
+        panelsToggle.setAttribute('aria-label', collapsed ? 'Oldalsávok megnyitása' : 'Oldalsávok becsukása');
+        panelsToggle.setAttribute('title', collapsed ? 'Oldalsávok megnyitása' : 'Oldalsávok becsukása');
+        panelsToggle.textContent = collapsed ? '›‹' : '‹›';
+    }
+
+    if(panelsToggle){
+        panelsToggle.addEventListener('click', function(){
+            if(isMobile()) return;
+            document.body.classList.toggle('panels-collapsed');
+            updatePanelsToggle();
+        });
+        updatePanelsToggle();
+    }
+
+    window.addEventListener('resize', function(){
+        if(isMobile() && document.body.classList.contains('panels-collapsed')){
+            document.body.classList.remove('panels-collapsed');
+            updatePanelsToggle();
+        }
+    });
 
     /* ---------------- sidebar: overlay + toggle ---------------- */
     var overlay = document.createElement('div');
