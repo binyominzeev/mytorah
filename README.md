@@ -45,6 +45,41 @@ bookmarkable, shareable permalink: nginx's `location ~ ^/([^/]+)/\d+(/\d+)?/?$` 
 This trades "highlighted even with JavaScript disabled" for a build that's two orders of magnitude
 smaller (~54 pages instead of thousands) — small text edits no longer touch a big fan-out of files.
 
+## Serve statically with nginx
+
+No Node server or PM2 is needed in production: the build is fully static, so nginx serves
+`out/` directly and every feature works — including chapter/verse deep links like
+`/Softim/17/14`, which nginx rewrites to the single `Softim.html` page while client-side
+JS does the scrolling and verse highlighting. (`next start` is *not* an option here: with
+`output: 'export'` there is no Node runtime, trying it fails with `"next start" does not
+work with "output: export" configuration`.)
+
+```bash
+npm install
+npm run build   # produces out/
+```
+
+Then adapt the sample server block and enable it:
+
+```bash
+sudo cp deploy/nginx.conf.sample /etc/nginx/sites-available/mytorah
+sudo $EDITOR /etc/nginx/sites-available/mytorah   # set server_name, and root -> /var/www/mytorah/out
+sudo ln -s /etc/nginx/sites-available/mytorah /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+The important parts of the config (see `deploy/nginx.conf.sample`):
+
+- `root /var/www/mytorah/out;` — points at the exported static files
+- `location ~ ^/([^/]+)/\d+(/\d+)?/?$ { try_files /$1.html =404; }` — maps `/Softim/17`
+  and `/Softim/17/14` onto `Softim.html` **without a redirect**, so the URL stays
+  bookmarkable and `components/ParashaView.tsx` can highlight the verse on load
+- `try_files $uri $uri.html $uri/ =404;` — extensionless parasha URLs (`/Softim`)
+- long-lived cache headers for the content-hashed `/_next/static/` assets
+
+There is nothing to restart after a deploy: `npm run build` replaces the contents of
+`out/` and nginx serves the new files immediately.
+
 ## Deploy
 
 Two independent things need to reach the server:
