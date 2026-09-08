@@ -363,6 +363,11 @@ body.panels-collapsed .content{ margin-left:0; margin-right:0; }
 .bilingual-table td.hu .vrs-num.active-verse{ background:var(--gold); color:var(--ink); }
 .bilingual-table td.hu .vrs-num.verse-hover{ background:var(--gold); color:var(--ink); }
 
+/* full verse text highlight (hebrew + hungarian) on hover/active, not just the number badge */
+.verse-text{ transition:background .15s ease; border-radius:3px; }
+.verse-text.verse-hover{ background:rgba(201,162,75,.16); }
+.verse-text.active-verse{ background:rgba(201,162,75,.16); }
+
 /* active verse row highlight */
 tr.verse-row.active-row td{ background:rgba(201,162,75,.09); }
 tr.verse-row{ transition:background .2s ease; }
