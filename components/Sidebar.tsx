@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { NavBook } from "@/lib/types";
 
 export default function Sidebar({ nav }: { nav: NavBook[] }) {
@@ -10,9 +10,16 @@ export default function Sidebar({ nav }: { nav: NavBook[] }) {
   const activeSlug = pathname.split("/").filter(Boolean)[0] ?? "";
   const [open, setOpen] = useState(false);
   const [openBooks, setOpenBooks] = useState<Set<string>>(new Set());
+  const isFirstRender = useRef(true);
 
   useEffect(() => {
-    setOpen(false);
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      // on mobile, show the menu open by default so it can be used without an extra tap
+      if (window.matchMedia("(max-width: 980px)").matches) setOpen(true);
+    } else {
+      setOpen(false);
+    }
     const owner = nav.find((book) => book.parashot.some((p) => p.slug === activeSlug));
     if (owner) {
       setOpenBooks((prev) => (prev.has(owner.name) ? prev : new Set(prev).add(owner.name)));

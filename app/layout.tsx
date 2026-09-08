@@ -30,6 +30,11 @@ const fontUi = Inter({
 
 export const metadata: Metadata = {
   title: "The Essentialist Torah",
+  appleWebApp: {
+    capable: true,
+    title: "The Essentialist Torah",
+    statusBarStyle: "black-translucent",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
