@@ -16,41 +16,60 @@ It can:
 - Take the commentaries and implement them into the text
 - Get them together in a comment sidebar and clickable inner link
 
-## Local test server
+## Local development
 
-The generated site (`site/`) uses absolute paths like `/static/styles.css`, so it must be served
-from its own folder as the web root, not just opened as a `file://` page (otherwise the CSS/JS
-won't load). Run this from the project root:
+Copy `.env.local.example` to `.env.local` and point `CONTENT_PATH` at the vault (or a synced
+copy of it). Then run:
 
 ```bash
-python3 -m http.server 8000 --directory site
+npm install
+npm run dev
 ```
 
-Then open http://localhost:8000/index.html (or http://localhost:8000/hu/index.html for the
-Hungarian version) in a browser. Use your browser's device toolbar (responsive mode) to test the
-mobile/tablet layout.
+Open http://localhost:3000. Deep verse links like `/Softim/17/14` and chapter links like
+`/Softim/17` won't resolve to a distinct route in dev mode (there's only one page per parasha,
+`/Softim`) — use `npm run build` + a static server with the nginx rewrite (see below) to test
+those, or just open `/Softim` and click a verse.
+
+## Build
+
+```bash
+npm run build
+```
+
+With `output: 'export'` in `next.config.js`, this produces a static `out/` folder with exactly
+**one page per parasha** (`out/Softim.html`) — not one per verse. `/Softim/17/14` is still a real,
+bookmarkable, shareable permalink: nginx's `location ~ ^/([^/]+)/\d+(/\d+)?/?$` rule (see
+`deploy/nginx.conf.sample`) serves `Softim.html` for it without a redirect, and client-side JS
+(`components/ParashaView.tsx`) reads the URL on load to scroll to and highlight the right verse.
+This trades "highlighted even with JavaScript disabled" for a build that's two orders of magnitude
+smaller (~54 pages instead of thousands) — small text edits no longer touch a big fan-out of files.
 
 ## Deploy
 
-Run the generator and FTP synchronisation from the project root:
+Two independent things need to reach the server:
 
-```bash
-python3 upload.py
-```
+1. **Vault content** (Markdown notes) — synced over FTP, separate from the code:
 
-The synchronisation uses plain FTP and stores a `.mytorah-manifest.json` file in the
-configured remote directory. After the first full upload, only files whose SHA-256 hash
-changed are uploaded. Remote files that no longer exist locally are not deleted.
+   ```bash
+   python3 content-sync/sync_content.py
+   ```
 
-To inspect the planned changes without uploading files:
+   This uploads only changed `*.md` files (and `.obsidian/bookmarks.json`) to `CONTENT_FTP_DIR`
+   (configured in `config.py`, excluded from Git). Use `--dry-run` to preview changes.
 
-```bash
-python3 upload.py --dry-run
-```
+2. **Code** — deployed via git, built in place on the server:
 
-FTP credentials are read from the local `config.py`, which is excluded from Git. Do not
-commit that file or share its contents. Because plain FTP is unencrypted, use it only when
-the hosting environment requires it and rotate the password if it has been exposed.
+   ```bash
+   ssh your-server
+   cd /path/to/mytorah
+   git pull
+   npm install
+   npm run build
+   ```
+
+   nginx serves the `out/` folder directly (see `deploy/nginx.conf.sample`); there's no separate
+   upload step and no server restart — the new static files are live as soon as the build finishes.
 
 It is written together with ChatGPT:
 

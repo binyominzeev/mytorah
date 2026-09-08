@@ -1,0 +1,32 @@
+# Sample nginx server block for the Next.js static export (output: 'export').
+# There is exactly one static page per parasha ("Softim.html"); chapter and verse
+# deep links (/Softim/17, /Softim/17/14) are the SAME page, served without a
+# redirect, so the client-side JS in ParashaView can highlight/scroll to the
+# right verse from the URL. try_files handles the base URL, the regex location
+# below maps the chapter/verse variants onto that one file.
+
+server {
+    listen 80;
+    server_name esstorah.com www.esstorah.com;
+
+    root /path/to/mytorah/out;
+    index index.html;
+
+    # /Slug/17 or /Slug/17/14 -> Slug.html (verse highlight happens client-side)
+    location ~ ^/([^/]+)/\d+(/\d+)?/?$ {
+        try_files /$1.html =404;
+    }
+
+    location / {
+        try_files $uri $uri.html $uri/ =404;
+    }
+
+    location = /404.html {
+        internal;
+    }
+
+    # Static assets Next.js content-hashes on build; safe to cache long-term.
+    location /_next/static/ {
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+}
