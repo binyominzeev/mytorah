@@ -29,4 +29,10 @@ server {
     location /_next/static/ {
         add_header Cache-Control "public, max-age=31536000, immutable";
     }
+
+    # Some minimal nginx builds omit font types from mime.types, which makes
+    # strict browsers (mobile Safari) reject @font-face and silently fall back.
+    location ~* \.woff2$ {
+        default_type font/woff2;
+    }
 }

@@ -19,10 +19,10 @@ const fontHebrew = Frank_Ruhl_Libre({
 // (Culmus project), fetched from Sefaria's public static assets.
 const fontHebrewText = localFont({
   src: [
-    { path: "../public/fonts/taamey-frank/TaameyFrankCLM-Medium.ttf", weight: "400", style: "normal" },
-    { path: "../public/fonts/taamey-frank/TaameyFrankCLM-Bold.ttf", weight: "700", style: "normal" },
-    { path: "../public/fonts/taamey-frank/TaameyFrankCLM-MediumOblique.ttf", weight: "400", style: "italic" },
-    { path: "../public/fonts/taamey-frank/TaameyFrankCLM-BoldOblique.ttf", weight: "700", style: "italic" },
+    { path: "../public/fonts/taamey-frank/TaameyFrankCLM-Medium.woff2", weight: "400", style: "normal" },
+    { path: "../public/fonts/taamey-frank/TaameyFrankCLM-Bold.woff2", weight: "700", style: "normal" },
+    { path: "../public/fonts/taamey-frank/TaameyFrankCLM-MediumOblique.woff2", weight: "400", style: "italic" },
+    { path: "../public/fonts/taamey-frank/TaameyFrankCLM-BoldOblique.woff2", weight: "700", style: "italic" },
   ],
   variable: "--font-hebrew-text",
   display: "swap",

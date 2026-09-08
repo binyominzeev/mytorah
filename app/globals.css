@@ -477,7 +477,6 @@ tr.verse-row{ transition:background .2s ease; }
     }
 
     .bilingual-table{ box-shadow:0 12px 30px -10px rgba(0,0,0,.5), 0 0 0 1px var(--parchment-edge); }
-    .bilingual-table td.he{ font-size:19px; }
 
     .commentary-container{
         top:auto;
