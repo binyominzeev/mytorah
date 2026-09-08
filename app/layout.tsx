@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import { Frank_Ruhl_Libre, Inter, Lora } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { getNavStructure } from "@/lib/content";
 import Sidebar from "@/components/Sidebar";
@@ -10,6 +11,20 @@ const fontHebrew = Frank_Ruhl_Libre({
   subsets: ["hebrew", "latin"],
   weight: ["400", "500", "700"],
   variable: "--font-hebrew",
+  display: "swap",
+});
+
+// Self-hosted so the biblical Hebrew text renders correctly even for readers
+// who don't have Taamey Frank installed locally. Files are GPLv2-licensed
+// (Culmus project), fetched from Sefaria's public static assets.
+const fontHebrewText = localFont({
+  src: [
+    { path: "../public/fonts/taamey-frank/TaameyFrankCLM-Medium.ttf", weight: "400", style: "normal" },
+    { path: "../public/fonts/taamey-frank/TaameyFrankCLM-Bold.ttf", weight: "700", style: "normal" },
+    { path: "../public/fonts/taamey-frank/TaameyFrankCLM-MediumOblique.ttf", weight: "400", style: "italic" },
+    { path: "../public/fonts/taamey-frank/TaameyFrankCLM-BoldOblique.ttf", weight: "700", style: "italic" },
+  ],
+  variable: "--font-hebrew-text",
   display: "swap",
 });
 
@@ -41,7 +56,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const nav = getNavStructure();
 
   return (
-    <html lang="hu" className={`${fontHebrew.variable} ${fontBody.variable} ${fontUi.variable}`}>
+    <html
+      lang="hu"
+      className={`${fontHebrew.variable} ${fontHebrewText.variable} ${fontBody.variable} ${fontUi.variable}`}
+    >
       <body>
         <Script
           async

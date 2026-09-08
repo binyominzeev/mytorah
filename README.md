@@ -26,6 +26,23 @@ npm install
 npm run dev
 ```
 
+## Hebrew text styling
+
+The Hebrew verse text (`.bilingual-table td.he` in [app/globals.css](app/globals.css)) uses three
+CSS variables defined in `:root`, so the font, size and line spacing can be tweaked in one place
+without touching the rest of the layout:
+
+```css
+--hebrew-text-font-family:var(--font-hebrew-text), var(--font-hebrew), serif;
+--hebrew-text-font-size:27px;
+--hebrew-text-line-height:1.5;
+```
+
+`--font-hebrew-text` points at **Taamey Frank CLM**, self-hosted from `public/fonts/taamey-frank/`
+and loaded via `next/font/local` in [app/layout.tsx](app/layout.tsx). Because it's bundled with the
+app (not relied upon as a system font), it renders correctly for every visitor even if Taamey Frank
+isn't installed on their device. The font files are GPLv2-licensed (Culmus project).
+
 Open http://localhost:3000. Deep verse links like `/Softim/17/14` and chapter links like
 `/Softim/17` won't resolve to a distinct route in dev mode (there's only one page per parasha,
 `/Softim`) — use `npm run build` + a static server with the nginx rewrite (see below) to test

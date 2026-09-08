@@ -15,6 +15,11 @@
 
     --sidebar-w:280px;
     --panel-w:300px;
+
+    /* Hebrew reading text (see README.md "Hebrew text styling" section) */
+    --hebrew-text-font-family:var(--font-hebrew-text), var(--font-hebrew), serif;
+    --hebrew-text-font-size:27px;
+    --hebrew-text-line-height:1.5;
 }
 
 *{ box-sizing:border-box; }
@@ -249,9 +254,9 @@ body.panels-collapsed .content{ margin-left:0; margin-right:0; }
 
 .bilingual-table td.he{
     width:52%;
-    font-family:var(--font-hebrew);
-    font-size:21px;
-    line-height:2;
+    font-family:var(--hebrew-text-font-family);
+    font-size:var(--hebrew-text-font-size);
+    line-height:var(--hebrew-text-line-height);
     direction:rtl;
     text-align:right;
     border-right:1px solid var(--parchment-edge);
@@ -274,7 +279,7 @@ body.panels-collapsed .content{ margin-left:0; margin-right:0; }
     border-bottom:2px solid var(--gold-dim);
 }
 .bilingual-table td.he h1{
-    font-family:var(--font-hebrew);
+    font-family:var(--hebrew-text-font-family);
     font-size:44px;
     font-weight:700;
     color:var(--gold-dim);
