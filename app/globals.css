@@ -425,6 +425,23 @@ tr.verse-row{ transition:background .2s ease; }
     transition:transform .25s ease;
 }
 
+@media (min-width:981px){
+    body.panels-collapsed .commentary-container:has(#sefaria-box){
+        top:auto;
+        right:20px;
+        bottom:20px;
+        width:var(--panel-w);
+        height:auto;
+        max-height:none;
+        overflow:visible;
+        padding:0;
+        background:transparent;
+        border:0;
+        transform:none;
+    }
+    body.panels-collapsed .commentary-container:has(#sefaria-box) > :not(#sefaria-box){ display:none; }
+}
+
 .panel-empty{
     margin:auto 0;
     text-align:center;
