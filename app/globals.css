@@ -106,7 +106,39 @@ a{ color:inherit; text-decoration:none; }
     opacity:0;
     transition:opacity .25s ease;
 }
-#chapter-indicator.visible{ opacity:1; }
+#chapter-indicator.visible{ opacity:0; }
+
+#chapter-bar{
+    position:fixed;
+    top:10px;
+    left:calc(var(--sidebar-w) + 20px);
+    right:calc(var(--panel-w) + 20px);
+    z-index:50;
+    display:flex;
+    justify-content:center;
+    flex-wrap:wrap;
+    gap:4px;
+    pointer-events:none;
+    transition:left .25s ease, right .25s ease;
+}
+#chapter-bar button{
+    pointer-events:auto;
+    min-width:32px;
+    height:28px;
+    padding:0 8px;
+    border-radius:14px;
+    border:1px solid var(--ink-line);
+    background:var(--ink-soft);
+    color:var(--text-light);
+    font-family:var(--font-ui);
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+}
+#chapter-bar button:hover{ border-color:var(--gold-dim); }
+#chapter-bar button.current{ color:var(--gold-bright); border-color:var(--gold); }
+body.panels-collapsed #chapter-bar{ left:70px; right:20px; }
+.bilingual-table h1[id^="chapter-"]{ scroll-margin-top:60px; }
 
 /* ---------- sidebar ---------- */
 #sidebar{
@@ -461,6 +493,7 @@ tr.verse-row{ transition:background .2s ease; }
 @media (max-width:980px){
     #menu-toggle{ display:flex; }
     #panels-toggle{ display:none; }
+    #chapter-bar{ left:64px; right:14px; justify-content:flex-end; }
     #chapter-indicator{ left:auto; right:14px; transform:none; top:14px; }
 
     #sidebar{

@@ -20,5 +20,5 @@ export default async function ParashaPage({ params }: { params: Promise<{ parash
   if (!found) notFound();
   const data = getParashaData(found.book, found.parasha);
 
-  return <ParashaView slug={data.slug} rows={data.rows} commentaries={data.commentaries} />;
+  return <ParashaView slug={data.slug} rows={data.rows} commentaries={data.commentaries} chapters={data.chapters} />;
 }

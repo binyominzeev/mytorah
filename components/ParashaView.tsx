@@ -25,14 +25,23 @@ export default function ParashaView({
   slug,
   rows,
   commentaries,
+  chapters,
 }: {
   slug: string;
+  chapters: number[];
   rows: RowData[];
   commentaries: CommentaryEntry[];
 }) {
   const [panelOpen, setPanelOpen] = useState(false);
   const [activeInfo, setActiveInfo] = useState<ActiveInfo | undefined>();
+  const [currentChapter, setCurrentChapter] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  function goToChapter(chapter: number) {
+    containerRef.current
+      ?.querySelector<HTMLElement>(`#chapter-${chapter}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   function clearActive() {
     containerRef.current?.querySelectorAll(".active-verse").forEach((el) => el.classList.remove("active-verse"));
@@ -77,6 +86,11 @@ export default function ParashaView({
     let ticking = false;
     function updateFromScroll() {
       ticking = false;
+      let headingChapter: number | null = null;
+      container!.querySelectorAll<HTMLElement>('h1[id^="chapter-"]').forEach((h) => {
+        if (h.getBoundingClientRect().top - 140 <= 0) headingChapter = Number(h.id.slice(8));
+      });
+      if (headingChapter !== null) setCurrentChapter(headingChapter);
       const anchors = container!.querySelectorAll<HTMLAnchorElement>("a.verse-link[data-chapter]");
       if (!anchors.length) return;
       const threshold = 140;
@@ -85,6 +99,7 @@ export default function ParashaView({
         if (a.getBoundingClientRect().top - threshold <= 0) current = a;
       });
       const { chapter, verse } = current.dataset;
+      if (headingChapter === null && chapter) setCurrentChapter(Number(chapter));
       if (!chapter || !verse) return;
       const href = `/${encodeURIComponent(slug)}/${chapter}/${verse}`;
       if (window.location.pathname !== href) {
@@ -160,6 +175,21 @@ export default function ParashaView({
       onMouseOver={(e) => setHover(e.target, true)}
       onMouseOut={(e) => setHover(e.target, false)}
     >
+      {chapters.length > 1 && (
+        <nav id="chapter-bar" aria-label="Fejezetek">
+          {chapters.map((c) => (
+            <button
+              key={c}
+              type="button"
+              className={c === currentChapter ? "current" : ""}
+              aria-current={c === currentChapter ? "true" : undefined}
+              onClick={() => goToChapter(c)}
+            >
+              {c}
+            </button>
+          ))}
+        </nav>
+      )}
       <div className="content">
         <BilingualTable rows={rows} />
       </div>
