@@ -5,7 +5,7 @@ module.exports = {
     {
       name: "mytorah-api",
       cwd: __dirname,
-      script: "/path/to/venv/bin/uvicorn",
+      script: "/usr/local/bin/uvicorn",
       args: "server:app --host 127.0.0.1 --port 8001",
       interpreter: "none", // uvicorn is a Python script, not Node
       watch: false, // a restart would kill running generation jobs
