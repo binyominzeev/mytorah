@@ -104,7 +104,7 @@ def load_html(dot: str) -> str | None:
 
 async def run_cmd(args: list[str], on_line) -> int:
     proc = await asyncio.create_subprocess_exec(
-        sys.executable, *args, cwd=MEFORSHIM,
+        sys.executable, "-u", *args, cwd=MEFORSHIM,
         stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
     async for raw in proc.stdout:
         on_line(raw.decode("utf-8", "replace").rstrip())
