@@ -1,18 +1,21 @@
 "use client";
 
 import type { CommentaryEntry } from "@/lib/types";
+import QuestionMap from "./QuestionMap";
 
 export default function CommentaryPanel({
   open,
   onClose,
   sefariaHref,
   sefariaLabel,
+  mapRef,
   commentaries,
 }: {
   open: boolean;
   onClose: () => void;
   sefariaHref?: string;
   sefariaLabel?: string;
+  mapRef?: string;
   commentaries: CommentaryEntry[];
 }) {
   return (
@@ -37,6 +40,7 @@ export default function CommentaryPanel({
           és megjelenik itt a Sefaria-link.
         </div>
       )}
+      {mapRef && <QuestionMap mapRef={mapRef} />}
       {commentaries.map((c) => (
         <div key={c.id} id={`commentary-${c.id}`} className="commentary" dangerouslySetInnerHTML={{ __html: c.html }} />
       ))}

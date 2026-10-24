@@ -167,6 +167,8 @@ export default function ParashaView({
       : undefined;
   const sefariaLabel = activeInfo ? `${activeInfo.book ?? ""} ${activeInfo.chapter}:${activeInfo.verse}` : undefined;
 
+  const mapRef = activeInfo && activeInfo.book ? `${activeInfo.book}.${activeInfo.chapter}.${activeInfo.verse}` : undefined;
+
   return (
     <div
       ref={containerRef}
@@ -198,6 +200,7 @@ export default function ParashaView({
         onClose={() => setPanelOpen(false)}
         sefariaHref={sefariaHref}
         sefariaLabel={sefariaLabel}
+        mapRef={mapRef}
         commentaries={commentaries}
       />
     </div>

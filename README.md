@@ -97,6 +97,36 @@ The important parts of the config (see `deploy/nginx.conf.sample`):
 There is nothing to restart after a deploy: `npm run build` replaces the contents of
 `out/` and nginx serves the new files immediately.
 
+## AI question-map backend (pm2)
+
+The "AI kérdés-válasz kommentár" button in the right panel talks to a small FastAPI backend
+(`api/server.py`) that runs the `meforshim` submodule (a git submodule, so clone with
+`--recurse-submodules` or run `git submodule update --init`). nginx proxies `/api/` to it
+(see `deploy/nginx.conf.sample`). Details: [api/README.md](api/README.md).
+
+One-time setup on the server:
+
+```bash
+python3 -m venv venv && venv/bin/pip install -r api/requirements.txt
+cp meforshim/.env.example meforshim/.env   # add the LLM API keys
+cp api/ecosystem.config.js api/ecosystem.local.config.js
+$EDITOR api/ecosystem.local.config.js      # set script -> /abs/path/to/venv/bin/uvicorn
+cd api && pm2 start ecosystem.local.config.js
+pm2 save
+pm2 startup                                # run the sudo command it prints: survives reboots
+```
+
+Operations:
+
+```bash
+pm2 status
+pm2 logs mytorah-api
+git pull && git submodule update --init && pm2 restart mytorah-api   # after a code update
+```
+
+Notes: do not use `--reload` / pm2 `watch` (a restart kills running generation jobs; finished
+results stay on disk in `meforshim/out/` and the cached extraction step is not paid for again).
+
 ## Deploy
 
 Two independent things need to reach the server:

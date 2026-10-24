@@ -17,6 +17,15 @@ server {
         try_files /$1.html =404;
     }
 
+    # AI question map backend (api/server.py, uvicorn on 127.0.0.1:8001).
+    # Generation can take minutes, but each request is a short poll.
+    location /api/ {
+        proxy_pass http://127.0.0.1:8001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_read_timeout 60s;
+    }
+
     location / {
         try_files $uri $uri.html $uri/ =404;
     }
