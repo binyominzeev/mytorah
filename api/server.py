@@ -12,6 +12,7 @@ import os
 import re
 import sys
 import time
+import traceback
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -82,7 +83,23 @@ def build_html(dot: str) -> bool:
     try:
         return bool(viewer.build(str(OUT / dot)))
     except Exception:
+        traceback.print_exc()
         return False
+
+
+def load_html(dot: str) -> str | None:
+    """A kész oldal szövege; ha hiányzik vagy régebbi a viewer.py-nál / az eredménynél, újraépíti. Hiba esetén None."""
+    path = html_path(dot)
+    try:
+        results = list((OUT / dot).glob("result-*.json"))
+        if results:
+            newest = max(f.stat().st_mtime for f in [*results, MEFORSHIM / "viewer.py"])
+            if not path.exists() or path.stat().st_mtime < newest:
+                build_html(dot)
+        return path.read_text(encoding="utf-8")
+    except Exception:
+        traceback.print_exc()
+        return None
 
 
 async def run_cmd(args: list[str], on_line) -> int:
@@ -134,7 +151,7 @@ def status(dot: str) -> dict:
     job = jobs.get(dot)
     if job and job["state"] in ("queued", "running"):
         return dict(job)
-    if html_path(dot).exists() or (any((OUT / dot).glob("result-*.json")) and build_html(dot)):
+    if load_html(dot) is not None:
         return {"state": "done", "stage": "Kész", "progress": 100}
     if job:
         return dict(job)
@@ -171,7 +188,7 @@ async def start(ref: str):
 @app.get("/api/map/{ref}/html")
 async def get_html(ref: str):
     dot, _ = parse(ref)
-    if status(dot)["state"] != "done":
+    page = load_html(dot) if dot not in jobs or jobs[dot]["state"] not in ("queued", "running") else None
+    if page is None:
         raise HTTPException(404, "Még nincs kész")
-    page = html_path(dot).read_text(encoding="utf-8")
     return HTMLResponse(page.replace("</head>", THEME + "</head>", 1))
