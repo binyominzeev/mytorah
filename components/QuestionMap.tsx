@@ -45,6 +45,29 @@ export default function QuestionMap({ mapRef }: { mapRef: string }) {
     return () => clearTimeout(timer.current);
   }, [mapRef, poll]);
 
+  // The map is a same-origin iframe: hand it the site's fonts (webfont rules + family variables).
+  function styleFrame(e: React.SyntheticEvent<HTMLIFrameElement>) {
+    try {
+      const doc = e.currentTarget.contentDocument;
+      if (!doc) return;
+      const fontRules: string[] = [];
+      for (const sheet of Array.from(document.styleSheets)) {
+        for (const rule of Array.from(sheet.cssRules)) {
+          if (rule instanceof CSSFontFaceRule) fontRules.push(rule.cssText);
+        }
+      }
+      const cs = getComputedStyle(document.documentElement);
+      const vars = ["--font-body", "--font-ui", "--font-hebrew-text", "--font-hebrew"]
+        .map((v) => `${v}:${cs.getPropertyValue(v)};`)
+        .join("");
+      const style = doc.createElement("style");
+      style.textContent = `${fontRules.join("\n")}\n:root{${vars}}`;
+      doc.head.appendChild(style);
+    } catch {
+      // cross-origin API: keep the built-in fallback fonts
+    }
+  }
+
   async function generate() {
     clearTimeout(timer.current);
     const s = await call(mapRef, "POST");
@@ -78,7 +101,7 @@ export default function QuestionMap({ mapRef }: { mapRef: string }) {
           <a className="qmap-open" href={htmlUrl} target="_blank" rel="noreferrer">
             Megnyitás új lapon
           </a>
-          <iframe className="qmap-frame" src={htmlUrl} title={`Kérdés-térkép ${mapRef}`} />
+          <iframe className="qmap-frame" src={htmlUrl} onLoad={styleFrame} title={`Kérdés-térkép ${mapRef}`} />
         </>
       )}
     </div>

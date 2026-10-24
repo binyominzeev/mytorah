@@ -15,7 +15,7 @@ import time
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import HTMLResponse
 
 ROOT = Path(__file__).resolve().parent.parent
 MEFORSHIM = ROOT / "meforshim"
@@ -44,6 +44,33 @@ def parse(ref: str) -> tuple[str, str]:
     except (SystemExit, Exception):
         raise HTTPException(404, "Ismeretlen vers")
     return f"{book}.{ch}.{v}", f"{book} {ch}:{v}"
+
+
+# Dark site theme (see app/globals.css), injected into the map page when it is served.
+# --font-* are provided by the embedding page (components/QuestionMap.tsx); the fallbacks are for standalone use.
+THEME = """<style>
+:root{--bg:transparent;--card:transparent;--fg:#e8e2d2;--mut:#a6a693;--line:#2b2f3c;--acc:#e0bc63;--ok:#7fbf8f;--warn:#e0a458;--chip:rgba(255,255,255,.06)}
+html{font-size:14px}
+body{font:14px/1.5 var(--font-body,Georgia,serif);color:var(--fg);background:transparent}
+header{display:none}
+main{padding:0}
+.card{border:0;padding:0;margin:0}
+.bar{gap:8px;margin:0 0 10px;font:12.5px var(--font-ui,system-ui,sans-serif);color:var(--mut)}
+select,input[type=search],button{font:12.5px var(--font-ui,system-ui,sans-serif);padding:4px 9px;border:1px solid #8a7038;border-radius:7px;background:transparent;color:var(--acc)}
+input[type=search]{color:var(--fg);border-color:var(--line);flex:1;min-width:90px}
+input[type=search]::placeholder{color:var(--mut)}
+button:hover{border-color:#c9a24b}
+summary{padding:3px 5px}
+summary:hover{background:rgba(255,255,255,.04)}
+.l1>summary{font-size:14.5px;font-weight:600;color:var(--acc)}
+.l2{margin-left:14px}.l2>summary{font-size:14px;font-weight:500}
+.l3{margin-left:30px;border-left:2px solid #8a7038;font-size:13.5px;color:var(--fg)}
+.n,.tag{font:11px var(--font-ui,system-ui,sans-serif);color:var(--mut)}
+.who{color:var(--acc);font-weight:600}
+.quote{direction:auto;font-family:var(--font-hebrew-text,var(--font-hebrew,serif));font-size:14px}
+.hl{background:rgba(201,162,75,.25)}
+::selection{background:#c9a24b;color:#14161d}
+</style>"""
 
 
 def html_path(dot: str) -> Path:
@@ -146,4 +173,5 @@ async def get_html(ref: str):
     dot, _ = parse(ref)
     if status(dot)["state"] != "done":
         raise HTTPException(404, "Még nincs kész")
-    return FileResponse(html_path(dot), media_type="text/html; charset=utf-8")
+    page = html_path(dot).read_text(encoding="utf-8")
+    return HTMLResponse(page.replace("</head>", THEME + "</head>", 1))
