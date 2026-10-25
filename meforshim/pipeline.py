@@ -29,7 +29,7 @@ import sefaria
 from clean import NIKUD, clean_links
 from llm import complete, cost, resolve
 
-# Küszöbök (0-3): az ennél alacsonyabb pontszámú kérdések kiszűrődnek. 0 = nincs szűrés.
+# Küszöbök (0-10): az ennél alacsonyabb pontszámú kérdések kiszűrődnek. 0 = nincs szűrés.
 THRESHOLDS = {"fidelity": 0, "difficulty": 0, "insight": 0}
 
 CTX_TITLE = "Nem konkrét szóhoz kötött, kontextuális kérdések"
@@ -82,19 +82,19 @@ ANCHOR RULES:
 
 CROSS-REFERENCES: if the commentator (or an entry in it) only points elsewhere ("see Radak", "see another verse", "see Bereshit Rabbah") without content of its own, do NOT create an item; add a one-line Hungarian note to "pointers".
 
-SCORING (integers 0-3; be strict; most items should get 1 or 2):
+SCORING (integers 0-10; be strict; most items should land between 3 and 7):
 - "fidelity": how directly this commentator's text supports BOTH the question and the answer.
-  3 = both stated almost literally; 2 = a close paraphrase or a clear inference from what he says;
-  1 = loose inference, or part of the answer comes from you; 0 = a guess.
+  9-10 = both stated almost literally; 6-8 = a close paraphrase or a clear inference from what he says;
+  3-5 = loose inference, or part of the answer comes from you; 0-2 = a guess.
 - "difficulty": is this a real problem that a careful reader of the verse would stumble on?
-  3 = a genuine tension or puzzle in the verse itself (textual, linguistic, logical, moral);
-  2 = a real but minor or expected question; 1 = mostly an elaboration, comment or background
-  information phrased as a question; 0 = no difficulty at all.
+  9-10 = a genuine tension or puzzle in the verse itself (textual, linguistic, logical, moral);
+  6-8 = a real but minor or expected question; 3-5 = mostly an elaboration, comment or background
+  information phrased as a question; 0-2 = no difficulty at all.
 - "insight": after reading the answer, does the verse read differently or more deeply?
-  3 = the answer changes how the verse is understood ("so THAT is why it says this");
-  2 = a solid, useful clarification; 1 = true but obvious or generic; 0 = adds nothing.
+  9-10 = the answer changes how the verse is understood ("so THAT is why it says this");
+  6-8 = a solid, useful clarification; 3-5 = true but obvious or generic; 0-2 = adds nothing.
 Score the question_hu/answer_hu as written. Do not reward length, the commentator's fame or rhetorical flourish.
-Give "insight" 3 to at most about one item in five.
+Give "insight" 9 or 10 to at most about one item in ten.
 
 STYLE:
 - "question_hu": Hungarian, self-contained, phrased about the verse itself (not "why does X say..."), so the same question from different commentators gets similar wording. Keep Hebrew words in Hebrew.
@@ -103,7 +103,7 @@ STYLE:
 - Use only Latin or Hebrew letters; never any other script.
 
 Output ONLY valid JSON, no prose, no code fences:
-{{"pointers":["..."],"items":[{{"anchor":"{last}","explicit":true,"target":null,"question_hu":"...","answer_hu":"...","quote":"...","fidelity":2,"difficulty":2,"insight":1}}]}}"""
+{{"pointers":["..."],"items":[{{"anchor":"{last}","explicit":true,"target":null,"question_hu":"...","answer_hu":"...","quote":"...","fidelity":6,"difficulty":5,"insight":4}}]}}"""
 
 def merge_system(v):
     """A "{group_desc}" helyére a hívó írja a csoport leírását."""
@@ -206,9 +206,9 @@ def quote_ok(quote: str, text_norm: str, words: set) -> bool:
 
 
 def score(v):
-    """Pontszám 0-3 közé szorítva; hiányzó vagy érthetetlen érték = None."""
+    """Pontszám 0-10 közé szorítva; hiányzó vagy érthetetlen érték = None."""
     try:
-        return max(0, min(3, int(v)))
+        return max(0, min(10, int(v)))
     except (TypeError, ValueError):
         return None
 
@@ -312,6 +312,7 @@ def build_items(extracted, commentators, anchors, thresholds=THRESHOLDS):
             if not q or not ans:
                 continue
             scores = {k: score(it.get(k)) for k in THRESHOLDS}
+            scores["total"] = sum(v for v in scores.values() if v is not None)
             if not passes(scores, thresholds):
                 low += 1
                 continue

@@ -88,7 +88,7 @@ function renderPanel(v){
       `${c.implicit?'<span class="tag">implicit</span>':""}<span class="n cluster-count">${c.n_commentators}</span></summary>`;
       c.answers.forEach(a=>{
         const who=whoLink(a.commentator,a.ref);
-        const sc=a.scores?`<span class="sc" title="hűség / nehézség / meglátás (0-3)">H${a.scores.fidelity??"-"} N${a.scores.difficulty??"-"} M${a.scores.insight??"-"}</span>`:"";
+        const sc=a.scores?`<span class="sc" title="hűség / nehézség / meglátás (0-10), összeg">H${a.scores.fidelity??"-"} N${a.scores.difficulty??"-"} M${a.scores.insight??"-"} Σ${a.scores.total??[a.scores.fidelity,a.scores.difficulty,a.scores.insight].reduce((x,y)=>x+(y??0),0)}</span>`:"";
         h+=`<div class="l3" data-commentator="${esc(a.commentator)}"><span class="t">${esc(a.answer)}</span> (${who}`+
         `${a.verified===false?' <span class="warn" title="az idézet nem található a szövegben">⚠</span>':""})`+sc+
         (a.quote?`<div class="quote">„${esc(a.quote)}"</div>`:"")+`</div>`;
