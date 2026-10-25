@@ -2,6 +2,7 @@
 
 GET  /api/map/{ref}          -> állapot: none | queued | running | done | error (+ progress, stage)
 POST /api/map/{ref}          -> elindítja a generálást (ha már kész vagy fut, nem csinál semmit)
+POST /api/map/{ref}/refresh  -> kész térkép újragenerálása (új értékelések, prompt); a letöltött adatot újrahasznosítja
 GET  /api/map/{ref}/html     -> a kész, önálló HTML (iframe-be tölthető)
 
 A {ref} alakja: Genesis.17.17. A kész eredmények a meforshim/out/ alatt maradnak (gyorsítótár).
@@ -174,6 +175,22 @@ async def start(ref: str):
     dot, human = parse(ref)
     st = status(dot)
     if st["state"] != "none" and st["state"] != "error":
+        return st
+    now = time.time()
+    started[:] = [t for t in started if now - t < 86400]
+    if len(started) >= MAX_NEW_PER_DAY:
+        raise HTTPException(429, "A napi generálási keret elfogyott, próbáld holnap.")
+    started.append(now)
+    jobs[dot] = {"state": "queued", "stage": "Sorban áll", "progress": 0}
+    asyncio.create_task(run_job(dot, human))
+    return jobs[dot]
+
+
+@app.post("/api/map/{ref}/refresh")
+async def refresh(ref: str):
+    dot, human = parse(ref)
+    st = status(dot)
+    if st["state"] in ("queued", "running"):
         return st
     now = time.time()
     started[:] = [t for t in started if now - t < 86400]

@@ -13,10 +13,10 @@ export default function QuestionMap({ mapRef }: { mapRef: string }) {
   current.current = mapRef;
 
   // Responses for a verse the user already left are ignored.
-  const call = useCallback(async (ref: string, method: "GET" | "POST"): Promise<Status | null> => {
+  const call = useCallback(async (ref: string, method: "GET" | "POST", suffix = ""): Promise<Status | null> => {
     let s: Status;
     try {
-      const r = await fetch(`${API}/map/${ref}`, { method });
+      const r = await fetch(`${API}/map/${ref}${suffix}`, { method });
       s = r.ok
         ? await r.json()
         : { state: "error", error: r.status === 429 ? "A napi keret elfogyott, próbáld holnap." : undefined };
@@ -76,6 +76,14 @@ export default function QuestionMap({ mapRef }: { mapRef: string }) {
     }
   }
 
+  async function refresh() {
+    clearTimeout(timer.current);
+    const s = await call(mapRef, "POST", "/refresh");
+    if (s && (s.state === "queued" || s.state === "running")) {
+      timer.current = setTimeout(() => poll(mapRef), 1500);
+    }
+  }
+
   const busy = status?.state === "queued" || status?.state === "running";
   const done = status?.state === "done";
   const htmlUrl = `${API}/map/${mapRef}/html`;
@@ -85,6 +93,11 @@ export default function QuestionMap({ mapRef }: { mapRef: string }) {
       {status && !done && (
         <button type="button" className="qmap-btn" onClick={generate} disabled={busy}>
           AI kérdés-válasz kommentár
+        </button>
+      )}
+      {(done || busy) && (
+        <button type="button" className="qmap-btn" onClick={refresh} disabled={busy}>
+          Frissítés
         </button>
       )}
       {busy && (

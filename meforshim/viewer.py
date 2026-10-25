@@ -57,6 +57,7 @@ a.who:hover{text-decoration:underline}
 .showq .quote{display:block}
 .hl{background:#ffe06655;border-radius:3px}
 .hidden{display:none}
+.sc{font-size:11px;color:var(--mut);margin-left:6px;white-space:nowrap}
 .ptr{font-size:14px;color:var(--mut)}
 </style></head><body>
 <header><h1>__REF__ — kérdés-térkép</h1>
@@ -87,8 +88,9 @@ function renderPanel(v){
       `${c.implicit?'<span class="tag">implicit</span>':""}<span class="n cluster-count">${c.n_commentators}</span></summary>`;
       c.answers.forEach(a=>{
         const who=whoLink(a.commentator,a.ref);
+        const sc=a.scores?`<span class="sc" title="hűség / nehézség / meglátás (0-3)">H${a.scores.fidelity??"-"} N${a.scores.difficulty??"-"} M${a.scores.insight??"-"}</span>`:"";
         h+=`<div class="l3" data-commentator="${esc(a.commentator)}"><span class="t">${esc(a.answer)}</span> (${who}`+
-        `${a.verified===false?' <span class="warn" title="az idézet nem található a szövegben">⚠</span>':""})`+
+        `${a.verified===false?' <span class="warn" title="az idézet nem található a szövegben">⚠</span>':""})`+sc+
         (a.quote?`<div class="quote">„${esc(a.quote)}"</div>`:"")+`</div>`;
       });
       h+="</details>";

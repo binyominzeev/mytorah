@@ -29,6 +29,9 @@ import sefaria
 from clean import NIKUD, clean_links
 from llm import complete, cost, resolve
 
+# Küszöbök (0-3): az ennél alacsonyabb pontszámú kérdések kiszűrődnek. 0 = nincs szűrés.
+THRESHOLDS = {"fidelity": 0, "difficulty": 0, "insight": 0}
+
 CTX_TITLE = "Nem konkrét szóhoz kötött, kontextuális kérdések"
 
 # Egységes írásmód. A prompt kéri, az utófeldolgozás kikényszeríti (NAME_FIXES). Itt állítható át.
@@ -79,6 +82,20 @@ ANCHOR RULES:
 
 CROSS-REFERENCES: if the commentator (or an entry in it) only points elsewhere ("see Radak", "see another verse", "see Bereshit Rabbah") without content of its own, do NOT create an item; add a one-line Hungarian note to "pointers".
 
+SCORING (integers 0-3; be strict; most items should get 1 or 2):
+- "fidelity": how directly this commentator's text supports BOTH the question and the answer.
+  3 = both stated almost literally; 2 = a close paraphrase or a clear inference from what he says;
+  1 = loose inference, or part of the answer comes from you; 0 = a guess.
+- "difficulty": is this a real problem that a careful reader of the verse would stumble on?
+  3 = a genuine tension or puzzle in the verse itself (textual, linguistic, logical, moral);
+  2 = a real but minor or expected question; 1 = mostly an elaboration, comment or background
+  information phrased as a question; 0 = no difficulty at all.
+- "insight": after reading the answer, does the verse read differently or more deeply?
+  3 = the answer changes how the verse is understood ("so THAT is why it says this");
+  2 = a solid, useful clarification; 1 = true but obvious or generic; 0 = adds nothing.
+Score the question_hu/answer_hu as written. Do not reward length, the commentator's fame or rhetorical flourish.
+Give "insight" 3 to at most about one item in five.
+
 STYLE:
 - "question_hu": Hungarian, self-contained, phrased about the verse itself (not "why does X say..."), so the same question from different commentators gets similar wording. Keep Hebrew words in Hebrew.
 - "answer_hu": ONE short Hungarian sentence with this commentator's answer.
@@ -86,7 +103,7 @@ STYLE:
 - Use only Latin or Hebrew letters; never any other script.
 
 Output ONLY valid JSON, no prose, no code fences:
-{{"pointers":["..."],"items":[{{"anchor":"{last}","explicit":true,"target":null,"question_hu":"...","answer_hu":"...","quote":"..."}}]}}"""
+{{"pointers":["..."],"items":[{{"anchor":"{last}","explicit":true,"target":null,"question_hu":"...","answer_hu":"...","quote":"...","fidelity":2,"difficulty":2,"insight":1}}]}}"""
 
 def merge_system(v):
     """A "{group_desc}" helyére a hívó írja a csoport leírását."""
@@ -188,6 +205,18 @@ def quote_ok(quote: str, text_norm: str, words: set) -> bool:
     return len(qw) >= 3 and sum(w in words for w in qw) / len(qw) >= 0.8
 
 
+def score(v):
+    """Pontszám 0-3 közé szorítva; hiányzó vagy érthetetlen érték = None."""
+    try:
+        return max(0, min(3, int(v)))
+    except (TypeError, ValueError):
+        return None
+
+
+def passes(scores, thresholds):
+    return all(thresholds[k] <= 0 or (scores[k] is not None and scores[k] >= thresholds[k]) for k in thresholds)
+
+
 def slug(name):
     return re.sub(r"[^A-Za-z0-9]+", "_", name).strip("_")
 
@@ -265,13 +294,13 @@ def source_ref(entries, quote):
     return best
 
 
-def build_items(extracted, commentators, anchors):
+def build_items(extracted, commentators, anchors, thresholds=THRESHOLDS):
     """Tisztítás, idézet-ellenőrzés, ismétlődések kiszűrése. `anchors`: az érvényes szegmenskulcsok.
     Visszaadja: (items, pointers, statisztika)."""
     texts = {c["name"]: norm(c["text"]) for c in commentators}
     words = {n: set(t.split()) for n, t in texts.items()}
     entries = {c["name"]: c.get("entries", []) for c in commentators}
-    items, pointers, i = [], [], 0
+    items, pointers, i, low = [], [], 0, 0
     for name, rec in extracted:
         for p in rec.get("pointers", []):
             p = normalize_hu(p)
@@ -282,12 +311,16 @@ def build_items(extracted, commentators, anchors):
             q, ans = normalize_hu(it.get("question_hu", "")), normalize_hu(it.get("answer_hu", ""))
             if not q or not ans:
                 continue
+            scores = {k: score(it.get(k)) for k in THRESHOLDS}
+            if not passes(scores, thresholds):
+                low += 1
+                continue
             i += 1
             quote = it.get("quote", "") or ""
             items.append({"id": i, "commentator": name,
                           "anchor": it.get("anchor") if it.get("anchor") in anchors else "CTX",
                           "explicit": bool(it.get("explicit")), "target": it.get("target"),
-                          "question": q, "answer": ans, "quote": quote,
+                          "question": q, "answer": ans, "quote": quote, "scores": scores,
                           "ref": source_ref(entries[name], quote),
                           "verified": quote_ok(quote, texts[name], words[name])})
     kept, dups = [], 0
@@ -297,7 +330,7 @@ def build_items(extracted, commentators, anchors):
             dups += 1
             continue
         kept.append(x)
-    stats = {"total": len(items), "dups": dups, "unverified": sum(not x["verified"] for x in kept)}
+    stats = {"total": len(items), "dups": dups, "low": low, "unverified": sum(not x["verified"] for x in kept)}
     return kept, pointers, stats
 
 
@@ -355,7 +388,7 @@ def build_result(v, clusters, items, pointers):
                 "n_commentators": len({by_id[i]["commentator"] for i in c["ids"]}),
                 "answers": [{"commentator": by_id[i]["commentator"], "answer": by_id[i]["answer"],
                              "quote": by_id[i]["quote"], "ref": by_id[i]["ref"],
-                             "verified": by_id[i]["verified"]} for i in c["ids"]],
+                             "verified": by_id[i]["verified"], "scores": by_id[i]["scores"]} for i in c["ids"]],
             } for c in cl]})
     return out
 
@@ -426,7 +459,7 @@ async def main_async(a):
     (workdir / "items.json").write_text(json.dumps(items, ensure_ascii=False, indent=1), encoding="utf-8")
     t2 = time.time()
     print(f"  -> {st['total']} kérdés, {st['dups']} ismétlődés kiszűrve, {len(pointers)} csak-utalás, "
-          f"{st['unverified']} nem igazolt idézet ({t2 - t1:.1f}s)")
+          f"{st['unverified']} nem igazolt idézet, {st['low']} küszöb alatti ({t2 - t1:.1f}s)")
 
     print(f"Összevonás ({mg_spec['name']}, horgonyonként párhuzamosan)")
     clusters = await merge_all(mg_spec, verse, items, a, meter)
