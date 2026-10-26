@@ -94,7 +94,6 @@ STYLE:
 - "question_hu": Hungarian, self-contained, phrased about the verse itself (not "why does X say..."), so the same question from different commentators gets similar wording. Keep Hebrew words in Hebrew.
 - "answer_hu": ONE short Hungarian sentence with this commentator's answer.
 - Use exactly these spellings in Hungarian text: {NAMES_HINT}.
-- Use only Latin or Hebrew letters; never any other script.
 
 Output ONLY valid JSON, no prose, no code fences:
 {{"pointers":["..."],"items":[{{"anchor":"{last}","target":null,"question_hu":"...","answer_hu":"...","quote":"..."}}]}}"""
