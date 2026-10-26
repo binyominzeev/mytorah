@@ -78,10 +78,10 @@ def prompt_hash(*parts):
 
 # ---------- kinyerés ----------
 
-async def run_extract(spec, sample, a, root):
+async def run_extract(spec, sample, a, root, system):
     sem = asyncio.Semaphore(a.concurrency)
     d = root / spec["name"] / "extract"
-    ph = prompt_hash(P.extract_system(VERSE), spec["model"], json.dumps(spec.get("extra", {}), sort_keys=True))
+    ph = prompt_hash(system, spec["model"], json.dumps(spec.get("extra", {}), sort_keys=True))
 
     async def one(c):
         f = d / f"{P.slug(c['name'])}.json"
@@ -89,7 +89,7 @@ async def run_extract(spec, sample, a, root):
         if rec and rec.get("ph") == ph and rec.get("text_hash") == prompt_hash(c["text"]):
             return c, rec
         async with sem:
-            r = await complete(spec, P.extract_system(VERSE), f"Commentator: {c['name']}\n\n{c['text']}",
+            r = await complete(spec, system, f"Commentator: {c['name']}\n\n{c['text']}",
                                a.extract_max_tokens)
         rec = {"ph": ph, "text_hash": prompt_hash(c["text"]), "raw": r.text, "tin": r.tin, "tout": r.tout,
                "truncated": r.truncated, "secs": r.secs, "error": r.error}
@@ -142,7 +142,6 @@ def analyse_extract(spec, done, sample):
         "dup_rate": st["dups"] / max(1, st["total"]),
         "unverified_rate": st["unverified"] / max(1, len(kept)),
         "ctx_share": sum(x["anchor"] == "CTX" for x in kept) / max(1, len(kept)),
-        "explicit_share": sum(x["explicit"] for x in kept) / max(1, len(kept)),
         "foreign_char_rate": lost_chars / max(1, total_chars),
         "name_fix_rate": name_fixed / max(1, len(kept)),
     }
@@ -174,7 +173,7 @@ def compare_to_ref(items, ref_items):
 # ---------- LLM-bíró (vak, egy jelölt / hívás) ----------
 
 JUDGE_SYSTEM = """You audit an extraction of questions from ONE classical Jewish commentary on Genesis 17:17.
-You get the commentator's source text and a list of extracted items (anchor, explicit flag, Hungarian question, answer, quote).
+You get the commentator's source text and a list of extracted items (anchor, Hungarian question, answer, quote).
 Rate strictly:
 - fidelity (1-5): do the answers say only what the commentator says (no added interpretation or background)?
 - coverage (1-5): are all real questions/difficulties addressed by the commentator captured?
@@ -202,8 +201,8 @@ async def run_judge(judge_spec, spec, sample, items, a, root):
             tok[0] += rec.get("tin", 0)
             tok[1] += rec.get("tout", 0)
             return rec["scores"]
-        listing = "\n".join(f"- [{x['anchor']}|{'explicit' if x['explicit'] else 'implicit'}] {x['question']} => "
-                            f"{x['answer']} (quote: {x['quote']})" for x in its) or "(no items)"
+        listing = "\n".join(f"- [{x['anchor']}] {x['question']} => "
+                    f"{x['answer']} (quote: {x['quote']})" for x in its) or "(no items)"
         async with sem:
             r = await complete(judge_spec, JUDGE_SYSTEM, f"SOURCE ({c['name']}):\n{c['text']}\n\nITEMS:\n{listing}", 1000)
         tok[0] += r.tin
@@ -227,7 +226,7 @@ async def run_judge(judge_spec, spec, sample, items, a, root):
 # ---------- összevonás ----------
 
 def merge_lines(group_items):
-    return "\n".join(f"{x['id']} | {'explicit' if x['explicit'] else 'implicit'} | {x['target'] or '-'} | "
+    return "\n".join(f"{x['id']} | {x['target'] or '-'} | "
                      f"{x['question']} || {x['answer'][:200]}" for x in group_items)
 
 
@@ -277,7 +276,12 @@ async def run_merge(spec, groups, a, root):
 def parse_clusters(rec, valid):
     try:
         data = P.parse_json(rec["raw"])
-        raw = [[i for i in c.get("ids", []) if isinstance(i, int)] for c in data.get("clusters", [])]
+        raw = []
+        for cluster in data.get("clusters", []):
+            ids = cluster.get("ids", [])
+            if not ids:
+                ids = [i for answer in cluster.get("answers", []) for i in answer.get("ids", [])]
+            raw.append([i for i in ids if isinstance(i, int)])
     except Exception:  # noqa: BLE001
         return None
     seen, out, dup, foreign = set(), [], 0, 0
@@ -446,6 +450,7 @@ async def main_async(a):
     print(f"Vers: {VERSE.ref}")
     sample = stratified_sample(commentators, a.sample, a.seed)
     print(f"Minta: {len(sample)}/{len(commentators)} magyarázó, {sum(c['chars'] for c in sample)} karakter")
+    extract_prompt = P.extract_system(VERSE, P.rashi_reference(commentators))
     by_name = {m["name"]: m for m in models}
     ref_name = a.reference if a.reference in by_name else models[0]["name"]
     judge_spec = None
@@ -456,7 +461,7 @@ async def main_async(a):
             sys.exit(f"Ismeretlen bíró: {a.judge}")
 
     print("1/3 Kinyerés minden modellel (párhuzamosan)")
-    raw = await asyncio.gather(*(run_extract(m, sample, a, root) for m in models))
+    raw = await asyncio.gather(*(run_extract(m, sample, a, root, extract_prompt) for m in models))
     ex = {m["name"]: analyse_extract(m, d, sample) for m, d in zip(models, raw)}
     ref_items = ex[ref_name]["items"]
     for m in models:

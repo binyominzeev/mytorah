@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""1. lépés: Sefaria /api/links?with_text=1 válasz -> tisztított, magyarázónkénti szöveg.
+"""1. lépés: Sefaria /api/links?with_text=1 válasz -> tisztított, forrásonkénti szöveg.
 
 Nem használ modellt. Kidobja a HTML-t, a lábjegyzeteket és (alapból) a nikudot,
-magyarázónként csak egy nyelvet tart meg. Ettől az input a töredékére esik vissza.
+forrásonként csak egy nyelvet tart meg. Ettől az input a töredékére esik vissza.
 """
 import argparse
 import html
@@ -15,6 +15,56 @@ SUP_MARKER = re.compile(r'<sup class="footnote-marker">.*?</sup>', re.S)
 TAG = re.compile(r"<[^>]+>")
 SPACES = re.compile(r"[ \t\r\f\v]+")
 FOOTNOTE_OPEN = '<i class="footnote">'
+
+BAVLI_TRACTATES = frozenset({
+    "arakhin", "avodah zarah", "baba batra", "baba kamma", "baba metzia", "bekhorot",
+    "beitzah", "berakhot", "bava batra", "bava kamma", "bava metzia", "chagigah", "chullin",
+    "eruvin", "horayot", "keritot", "ketubot", "kiddushin", "maakkot",
+    "makkot", "makkos", "megillah",
+    "meilah", "menachot", "moed katan", "niddah", "nazir", "nedarim",
+    "pesachim", "rosh hashanah", "sanhedrin", "shabbat", "shekalim", "shevuot", "sotah",
+    "sukkah", "taanit", "tamid", "temurah", "yevamot", "yoma", "zevachim",
+})
+YERUSHALMI_TRACTATES = frozenset({
+    "avodah zarah", "baba batra", "baba kamma", "baba metzia", "bava batra", "bava kamma",
+    "bava metzia", "berakhot", "beitzah", "bikkurim", "chagigah", "challah", "demai",
+    "eruvin", "gittin", "horayot", "kilayim", "ketubot", "kiddushin", "maaser sheni",
+    "maaserot", "megillah", "moed katan", "nazir", "nedarim", "niddah", "orlah", "peah",
+    "pesachim", "rosh hashanah", "sanhedrin", "shabbat", "shekalim", "shevuot", "sotah",
+    "sukkah", "taanit", "terumot", "yevamot", "yoma",
+})
+
+
+def supported_source(entry: dict) -> bool:
+    category = entry.get("category")
+    title = re.sub(r"[^a-z0-9]+", " ", (entry.get("index_title") or "").casefold()).strip()
+    if category == "Commentary":
+        return True
+    if category == "Kabbalah":
+        return title.startswith("zohar")
+    if category != "Talmud":
+        return False
+    for prefix in ("jerusalem talmud ", "talmud yerushalmi ", "yerushalmi "):
+        if title.startswith(prefix):
+            return title[len(prefix):] in YERUSHALMI_TRACTATES
+    for prefix in ("babylonian talmud ", "talmud bavli ", "bavli "):
+        if title.startswith(prefix):
+            title = title[len(prefix):]
+            break
+    return title in BAVLI_TRACTATES
+
+
+def anchor_matches(entry: dict, anchor: str) -> bool:
+    if entry.get("anchorRef") == anchor:
+        return True
+    expanded = entry.get("anchorRefExpanded") or []
+    if anchor in expanded:
+        return True
+    match = re.fullmatch(r"(.+?)\s+(\d+):(\d+)-(\d+)", entry.get("anchorRef", ""))
+    target = re.fullmatch(r"(.+?)\s+(\d+):(\d+)", anchor)
+    return bool(match and target and match.group(1) == target.group(1)
+                and match.group(2) == target.group(2)
+                and int(match.group(3)) <= int(target.group(3)) <= int(match.group(4)))
 
 
 def strip_footnotes(s: str) -> str:
@@ -74,14 +124,16 @@ def pick(entry: dict, lang: str):
     return None, ""
 
 
-def clean_links(data, lang="auto", keep_nikud=False, anchor=None, category="Commentary"):
-    """`data`: a Sefaria /api/links válasza (lista). `anchor`: csak az pontosan erre a versre horgonyzott
-    bejegyzések (a több versre kiterjedő kommentárok kimaradnak); None = nincs szűrés."""
+def clean_links(data, lang="auto", keep_nikud=False, anchor=None, category=None):
+    """`data`: Sefaria /api/links lista. `anchor`: ezt a verset lefedő horgonyok; alapból a kommentárok,
+    Zohár, Bavli és Yerushalmi forrásai maradnak meg."""
     groups = OrderedDict()
     for e in data:
         if category and e.get("category") != category:
             continue
-        if anchor and e.get("anchorRef") != anchor:
+        if not category and not supported_source(e):
+            continue
+        if anchor and not anchor_matches(e, anchor):
             continue
         code, raw = pick(e, lang)
         txt = clean_text(raw, keep_nikud)
@@ -113,4 +165,4 @@ if __name__ == "__main__":
     with open(a.out, "w", encoding="utf-8") as f:
         json.dump(res, f, ensure_ascii=False, indent=1)
     total = sum(r["chars"] for r in res)
-    print(f"{len(res)} magyarázó, {total} karakter (~{total // 3} token durván) -> {a.out}")
+    print(f"{len(res)} forrás, {total} karakter (~{total // 3} token durván) -> {a.out}")

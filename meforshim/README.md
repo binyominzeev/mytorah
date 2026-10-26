@@ -2,7 +2,9 @@
 
 ## Cél
 
-Egy olyan eszköz, ami egy Tórá-pászukhoz tartozó klasszikus kommentárokat **a kérdések szerint** rendszerezi MI segítségével. A Tóra öt könyvének bármelyik versére működik (pl. `"Genesis 17:17"`, `"Exodus 3:14"`, `"Deuteronomy 6:4"`): a héber verset és a kommentárokat a Sefariáról tölti le.
+Egy olyan eszköz, ami egy Tórá-pászukhoz tartozó klasszikus kommentárokat és kapcsolódó forrásokat **a kérdések szerint** rendszerezi MI segítségével. A Tóra öt könyvének bármelyik versére működik (pl. `"Genesis 17:17"`, `"Exodus 3:14"`, `"Deuteronomy 6:4"`): a héber verset és a közvetlen Sefaria-linkeket tölti le.
+
+A feldolgozott források: kommentárok, Zohár, Babilóniai Talmud (Bavli) és Jeruzsálemi Talmud (Yerushalmi). A Midrások és a kisebb traktátusok kimaradnak. `--lang auto` esetén a héber szöveg az elsődleges; a Zohár Sefarián elérhető héber fordítása is így kerül kiválasztásra.
 
 > וַיִּפֹּל אַבְרָהָם עַל־פָּנָיו וַיִּצְחָק וַיֹּאמֶר בְּלִבּוֹ הַלְּבֶן מֵאָה־שָׁנָה יִוָּלֵד וְאִם־שָׂרָה הֲבַת־תִּשְׁעִים שָׁנָה תֵּלֵד
 
@@ -12,23 +14,23 @@ A cél: minden pászukhoz a kérdések szerint rendszerezni AI-val a kommentáro
 
 - Végig kell menni az összes kommentár kérdésein, és csoportosítva leírni őket aszerint, hogy a pászuk melyik szavaihoz tartoznak.
 - Külön csoportba kerülnek azok a kérdések, amik nem konkrét szavakhoz tartoznak (nem a nyelvezetre kérdeznek, hanem a kontextus szerinti témára): *dibur hámátchil*-hoz nem köthető kérdések.
-- Az implicit kérdéseket is össze kell írni: amik nincsenek kiírva, de a magyarázó válaszol rájuk.
+- Csak azokat a kérdéseket szabad felvenni, amelyeket a magyarázó maga kifejezetten kérdésként feltesz; a válaszból kikövetkeztetett kérdés kimarad.
 
 A kimenet egy beágyazott (nested) lista:
 
 1. **szint:** először a nem konkrét szavakhoz kötött kérdések, majd a pászuk szavai. Mellettük zárójelben, hogy hány kérdés tartozik oda.
 2. **szint:** a konkrét kérdések magyarul, mellettük, hogy hány magyarázó adresszálja őket.
-3. **szint:** maguk a válaszok egy rövid magyar mondatban, zárójelben a magyarázó nevével.
+3. **szint:** a tartalmilag azonos válaszok egy rövid magyar összefoglalóban, utána az összes magyarázó nevével.
 
 ### Példa a kimenetre
 
 ```
 - **Nem konkrét szóhoz kötött, kontextuális kérdések (12)**
-    - Kételkedett-e Ávráhám Isten ígéretében? (5)
-        - Nem kételkedett, csodálkozott/örült. (Rashi)
+    - Miért nevetett Ávráhám? (5)
+        - A nevetés örömöt, nem kételkedést fejez ki. (Rashi, Ramban, ...)
         - ...
 - **וַיִּצְחָק (3)**
-    - Az "וַיִּצְחָק" nevetést vagy gúnyt jelent? [implicit] (2)
+    - Mit jelent az "וַיִּצְחָק" szó? (2)
         - ...
 ```
 
@@ -37,24 +39,24 @@ A teljes kimenet futásonként: `out/<Könyv.fej.vers>/result-<tag>.md` és `.js
 ## Hogyan működik
 
 ```
-vers ──sefaria.py: letöltés + szegmentálás──▶ héber vers, szegmensek, kommentárok
+vers ──sefaria.py: letöltés + szegmentálás──▶ héber vers, szegmensek, közvetlen forráslinkek
      ──clean.py──▶ tisztított szövegek ──kinyerés (MI)──▶ kérdések
      ──ellenőrzés/szűrés──▶ összevonás horgonyonként (MI) ──▶ nested lista
 ```
 
-1. **Tisztítás** (modell nélkül): a Sefaria-válaszból eltávolítja a HTML-t, a lábjegyzeteket és (alapból) a nikudot. Magyarázónként egy nyelvet tart meg.
-2. **Kinyerés** (olcsóbb modell): magyarázónként egy hívás. Listázza, hogy a magyarázó milyen kérdésekre válaszol (explicit és implicit), kiválasztja a horgonyt (`S1..Sn` a vers szegmensei, vagy `CTX`), és szó szerinti idézetet ad.
-3. **Ellenőrzés:** az idézetet visszakeresi a magyarázó szövegében (a ⚠ jelöli az igazolatlant), kiszűri az ismétlődést, és egységesíti a neveket (`NAME_FIXES`).
-4. **Összevonás** (erősebb modell): horgonyonként párhuzamosan, az azonos kérdést feltevő sorokat egy klaszterbe vonja.
+1. **Tisztítás** (modell nélkül): a Sefaria-válaszból eltávolítja a HTML-t, a lábjegyzeteket és (alapból) a nikudot. Forrásonként egy nyelvet tart meg.
+2. **Kinyerés** (olcsóbb modell): forrásonként egy hívás. Csak a forrásban explicit módon feltett kérdéseket veszi fel, kiválasztja a horgonyt (`S1..Sn` a vers szegmensei, vagy `CTX`), és szó szerinti idézetet ad. Más kommentátor Rashi-idézete nem számít saját válasznak; csak a Rashi után hozzáadott saját magyarázat kerülhet be.
+3. **Ellenőrzés:** az idézetet visszakeresi a forrásszövegben (a ⚠ jelöli az igazolatlant), kiszűri az ismétlődést, és egységesíti a neveket (`NAME_FIXES`).
+4. **Összevonás** (erősebb modell): horgonyonként párhuzamosan azonos kérdésklasztereket alkot, majd a klaszteren belüli azonos jelentésű válaszokat közös összefoglalóba vonja. A forrásonkénti idézetek és hivatkozások megmaradnak.
 5. **Megjelenítés:** a nested lista Markdown és JSON formában.
 
-Az előzetes eredmény a hűségre épül: a modell csak azt jelentheti, amit a magyarázó mond, idézettel alátámasztva.
+Nincs kérdés-pontozás; a forrásidézet ellenőrzése megmarad. A külön benchmark opcionális LLM-bírója továbbra is pontozhat.
 
 ## Fájlok
 
 | Fájl | Szerep |
 |---|---|
-| [sefaria.py](sefaria.py) | Hivatkozás értelmezése, a héber vers és a kommentárok letöltése (gyorsítótárral), a vers szegmentálása. |
+| [sefaria.py](sefaria.py) | Hivatkozás értelmezése, a héber vers és a forráslinkek letöltése (gyorsítótárral), a vers szegmentálása. |
 | `segments/` | Opcionális kézi szegmentálás versenként (`segments/Genesis.17.17.txt`, soronként egy szegmens). |
 | [clean.py](clean.py) | Az 1. lépés: a Sefaria `links` kimenetének tisztítása. Önállóan is futtatható. |
 | [pipeline.py](pipeline.py) | A teljes folyamat (kinyerés, ellenőrzés, összevonás, kimenet). A promptok itt vannak. |
@@ -63,7 +65,7 @@ Az előzetes eredmény a hűségre épül: a modell csak azt jelentheti, amit a 
 | [viewer.py](viewer.py) | Az `out/<vers>/result-*.json` legfrissebb fájljából versenként önálló `kerdes-terkep.html`-t készít (kibontható listák, gépelés közben frissülő keresési számlálók; a kérdés találatakor a válaszok is láthatók; a magyarázók neve új ablakban a Sefaria forrásszövegére linkel). |
 | [env.py](env.py) | Minimális `.env` betöltő. |
 | `.env.example` | Sablon az API-kulcsokhoz. A saját `.env` gitignore-olt. |
-| `out/<Könyv.fej.vers>/` | Versenként: `verse.json`, `links.json` (letöltés-gyorsítótár), `result-<tag>.md/.json`, `<tag>/` köztes fájlok, `kerdes-terkep.html`, `bench/`. |
+| `out/<Könyv.fej.vers>/` | Versenként: `verse.json`, `links-v2.json` (teljes linkletöltés cache-e), `result-<tag>.md/.json`, `<tag>/` köztes fájlok, `kerdes-terkep.html`, `bench/`. |
 
 ## Telepítés
 
@@ -112,8 +114,8 @@ A modellnevek az [llm.py](llm.py) `MODELS` regiszteréből valók (`python bench
 |---|---|
 | `ref` (első argumentum) | a vers: könyv (angolul vagy átírással: Genesis/Bereshit, Exodus/Shemot, Leviticus/Vayikra, Numbers/Bamidbar, Deuteronomy/Devarim), fejezet, vers. Egyetlen vers. |
 | `--out` | kimeneti alapmappa (alap: `out`); a vers az `out/<Könyv.fej.vers>/` alá kerül |
-| `--links-json` | helyi kommentár-JSON (Sefaria `/api/links` formátum) a letöltés helyett |
-| `--refresh` | a vers és a kommentárok újraletöltése (alapból a gyorsítótár van használatban) |
+| `--links-json` | helyi Sefaria `/api/links` JSON a letöltés helyett |
+| `--refresh` | a vers és a közvetlen forráslinkek újraletöltése (alapból a gyorsítótár van használatban) |
 | `--segments-file`, `--max-segments` | kézi szegmentálás fájlból, illetve az automatikus szegmentálás felső határa (alap: 8) |
 | `--lang`, `--keep-nikud` | mint a `clean.py`-nál |
 | `--extract-model`, `--merge-model` | a két lépés modellje (alap: mindkettő `gpt-6-luna`) |

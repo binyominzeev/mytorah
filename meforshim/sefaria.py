@@ -1,7 +1,7 @@
 """Sefaria-letöltés és a vers előkészítése (Tóra, bármelyik pászuk).
 
 - parse_ref: "Genesis 17:17", "Exodus.3.14", "Devarim 6:4" ... -> (könyv, fejezet, vers)
-- prepare: letölti (és gyorsítótárazza) a héber verset és a kommentárokat, a verset szegmensekre bontja
+- prepare: letölti (és gyorsítótárazza) a héber verset és a közvetlen forráslinkeket, a verset szegmensekre bontja
 """
 import html
 import json
@@ -144,7 +144,7 @@ def load_segments_file(path, text):
 
 
 def prepare(a):
-    """Visszaad: (Verse, a kommentárok JSON-ja, a vers mappája). A letöltések a vers mappájában gyorsítótárazódnak."""
+    """Visszaad: (Verse, a közvetlen forráslinkek JSON-ja, a vers mappája). A letöltések a vers mappájában gyorsítótárazódnak."""
     book, ch, v = parse_ref(a.ref)
     dot = f"{book}.{ch}.{v}"
     vdir = Path(a.out) / dot
@@ -176,11 +176,11 @@ def prepare(a):
     if a.links_json:
         links = json.loads(Path(a.links_json).read_text(encoding="utf-8"))
     else:
-        lf = vdir / "links.json"
+        lf = vdir / "links-v2.json"
         if lf.exists() and not a.refresh:
             links = json.loads(lf.read_text(encoding="utf-8"))
         else:
-            links = _get(f"{API}/links/{dot}?with_text=1&category=Commentary")
+            links = _get(f"{API}/links/{dot}?with_text=1")
             lf.write_text(json.dumps(links, ensure_ascii=False), encoding="utf-8")
     return verse, links, vdir
 
@@ -189,7 +189,7 @@ def add_args(ap):
     """A közös, versre vonatkozó kapcsolók (pipeline.py, benchmark.py)."""
     ap.add_argument("ref", help='a vers, pl. "Genesis 17:17", "Exodus 3:14", "Deuteronomy 6:4"')
     ap.add_argument("--out", default="out", help="kimeneti alapmappa; a vers az out/<Könyv.fej.vers>/ alá kerül")
-    ap.add_argument("--links-json", help="helyi kommentár-JSON a letöltés helyett (Sefaria /api/links formátum)")
-    ap.add_argument("--refresh", action="store_true", help="a vers és a kommentárok újraletöltése")
+    ap.add_argument("--links-json", help="helyi Sefaria /api/links JSON a letöltés helyett")
+    ap.add_argument("--refresh", action="store_true", help="a vers és az összes forráslink újraletöltése")
     ap.add_argument("--segments-file", help="kézi szegmentálás: soronként egy szegmens (alap: segments/<vers>.txt, ha van)")
     ap.add_argument("--max-segments", type=int, default=8, help="automatikus szegmentálásnál a szegmensek legnagyobb száma")

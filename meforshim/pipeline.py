@@ -11,7 +11,7 @@ Használat:
     python pipeline.py "Deuteronomy 6:4" --extract-model haiku --merge-model sonnet --tag anthropic-haiku-sonnet
 
 A kimenet: out/<Könyv.fej.vers>/result-<tag>.md és .json (a költséggel együtt), a köztes fájlok ugyanott a <tag>/ mappában.
-A letöltött vers és kommentárok (verse.json, links.json) ugyanebbe a mappába gyorsítótárazódnak.
+A letöltött vers és forráslinkek (verse.json, links-v2.json) ugyanebbe a mappába gyorsítótárazódnak.
 A modellek nevei és árai az llm.py-ban vannak (python benchmark.py "Genesis 17:17" --list).
 """
 import argparse
@@ -24,13 +24,11 @@ import time
 from collections import OrderedDict
 from datetime import datetime
 from difflib import SequenceMatcher
+from typing import Any
 
 import sefaria
 from clean import NIKUD, clean_links
 from llm import complete, cost, resolve
-
-# Küszöbök (0-10): az ennél alacsonyabb pontszámú kérdések kiszűrődnek. 0 = nincs szűrés.
-THRESHOLDS = {"fidelity": 0, "difficulty": 0, "insight": 0}
 
 CTX_TITLE = "Nem konkrét szóhoz kötött, kontextuális kérdések"
 
@@ -49,9 +47,16 @@ NAME_FIXES = [
     (r"\b(?:Ra'am|Ra\"m|Re'em|Ráma|Ramah|Ra'm|Rá\"m|Ra\"am)\b", "Re'm"),
 ]
 
-def extract_system(v):
+def rashi_reference(commentators):
+    rashi = next((c for c in commentators if c["name"].strip().casefold() in {"rashi", "rashi on torah"}), None)
+    return rashi["text"] if rashi else ""
+
+
+def extract_system(v, rashi_text=""):
     segs = "\n".join(f"{k}: {t}" for k, t in v.segments.items())
     last = list(v.segments)[-1]
+    rashi_context = (f"\nREFERENCE ONLY — RASHI'S COMMENTARY ON THIS VERSE:\n{rashi_text}\n"
+                     if rashi_text else "")
     return f"""You analyze one classical Jewish commentary on a Torah verse, to build a map of the QUESTIONS the commentators address.
 
 VERSE ({v.ref}):
@@ -60,17 +65,20 @@ VERSE ({v.ref}):
 Verse segments (keys for "anchor"):
 {segs}
 CTX: not tied to a specific phrase (see rules).
+{rashi_context}
 
 You receive the text of ONE commentator on this verse. List every question/difficulty that this commentator addresses.
 
-FIDELITY (the most important rule):
-- Report only what THIS commentator's text says. Never add interpretation, labels (e.g. "doubting", "rhetorical", "miracle") or background knowledge unless the commentator himself says so.
+SOURCE OWNERSHIP (the most important rule):
+- Include ONLY questions the commentator himself explicitly raises as questions in his own exposition. The question must be stated as a question; never infer an unstated difficulty from an answer, explanation, or background knowledge. A question merely quoted from Rashi or another source does not count unless this commentator explicitly adopts it as his own.
+- Report only this commentator's own explanation. Never add interpretation or background knowledge.
+- The Rashi text above is attribution context only, not the current commentator's source. When a commentator other than Rashi quotes or paraphrases Rashi, do NOT present any explanation already stated by Rashi as this commentator's answer. Summarize only what this commentator adds. If there is no meaningful original addition, omit the item. Never quote the reference block as the current commentator's evidence.
+- When the current commentator is Rashi, treat the supplied commentator text as his own and summarize it normally.
 - If he quotes another view and rejects it, report the position HE takes.
-- "quote": copy VERBATIM 3-10 consecutive words from the commentator's text, in the language you were given (no translation, no ellipsis), that support the answer.
-- If you are unsure what he means, omit the item instead of guessing.
+- "quote": copy VERBATIM 3-10 consecutive words from the commentator's text, in the language you were given (no translation, no ellipsis), supporting the explicit question or the commentator's own answer.
+- If you are unsure whether the question or answer is explicit and owned by this commentator, omit the item.
 
 QUESTIONS:
-- explicit=true: he states it as a question/difficulty. explicit=false: he does not state it, but his comment clearly resolves it (infer the underlying question).
 - Include linguistic/text-critical questions (word meaning, grammar, vocalization, cantillation, translation).
 - If the question is raised about ANOTHER commentator (e.g. a supercommentary on Rashi), set "target" to that name; otherwise null.
 - Ignore content about other verses unless it is needed for the answer.
@@ -82,20 +90,6 @@ ANCHOR RULES:
 
 CROSS-REFERENCES: if the commentator (or an entry in it) only points elsewhere ("see Radak", "see another verse", "see Bereshit Rabbah") without content of its own, do NOT create an item; add a one-line Hungarian note to "pointers".
 
-SCORING (integers 0-10; be strict; most items should land between 3 and 7):
-- "fidelity": how directly this commentator's text supports BOTH the question and the answer.
-  9-10 = both stated almost literally; 6-8 = a close paraphrase or a clear inference from what he says;
-  3-5 = loose inference, or part of the answer comes from you; 0-2 = a guess.
-- "difficulty": is this a real problem that a careful reader of the verse would stumble on?
-  9-10 = a genuine tension or puzzle in the verse itself (textual, linguistic, logical, moral);
-  6-8 = a real but minor or expected question; 3-5 = mostly an elaboration, comment or background
-  information phrased as a question; 0-2 = no difficulty at all.
-- "insight": after reading the answer, does the verse read differently or more deeply?
-  9-10 = the answer changes how the verse is understood ("so THAT is why it says this");
-  6-8 = a solid, useful clarification; 3-5 = true but obvious or generic; 0-2 = adds nothing.
-Score the question_hu/answer_hu as written. Do not reward length, the commentator's fame or rhetorical flourish.
-Give "insight" 9 or 10 to at most about one item in ten.
-
 STYLE:
 - "question_hu": Hungarian, self-contained, phrased about the verse itself (not "why does X say..."), so the same question from different commentators gets similar wording. Keep Hebrew words in Hebrew.
 - "answer_hu": ONE short Hungarian sentence with this commentator's answer.
@@ -103,21 +97,24 @@ STYLE:
 - Use only Latin or Hebrew letters; never any other script.
 
 Output ONLY valid JSON, no prose, no code fences:
-{{"pointers":["..."],"items":[{{"anchor":"{last}","explicit":true,"target":null,"question_hu":"...","answer_hu":"...","quote":"...","fidelity":6,"difficulty":5,"insight":4}}]}}"""
+{{"pointers":["..."],"items":[{{"anchor":"{last}","target":null,"question_hu":"...","answer_hu":"...","quote":"..."}}]}}"""
 
 def merge_system(v):
     """A "{group_desc}" helyére a hívó írja a csoport leírását."""
     return f"""You receive questions about {v.ref} extracted from different commentators. All lines belong to ONE group: {{group_desc}}.
-Line format: id | explicit/implicit | target | question || answer (shortened)
+Line format: id | target | question || answer (shortened)
 
-Task: cluster lines that ask the SAME question.
-- Same topic is NOT enough. A debate usually holds several distinct sub-questions (for example: whether something is unusual at all / whether a proposed resolution really removes the difficulty / whether a cited precedent is valid). Keep such sub-questions as separate clusters.
+Task:
+- Cluster lines that ask the SAME question. Same topic is NOT enough; keep distinct sub-questions separate.
+- Within each question cluster, group answers that express the same substantive explanation, even when phrased differently. Write one concise Hungarian summary for each such answer group.
+- Keep answers separate when their reasoning or conclusion differs in a meaningful way. Do not erase a commentator's distinct addition just to make answers match.
 - If a cluster would exceed about 8 lines, check whether it mixes sub-questions, and split it.
-- Singletons are fine. Every id must appear in exactly one cluster.
+- Singletons are fine. Every input id must appear exactly once, in exactly one question cluster and one answer group.
 - "question_hu": a precise, neutral Hungarian formulation, specific enough to tell it apart from neighbouring clusters.
+- "answer_hu": a concise summary of the shared answer for the listed ids; do not add claims unsupported by those source answers.
 - Use exactly these spellings: {NAMES_HINT}.
 Output ONLY valid JSON, no prose, no code fences:
-{{"clusters":[{{"question_hu":"...","ids":[1,5,7]}}]}}"""
+{{"clusters":[{{"question_hu":"...","answers":[{{"answer_hu":"...","ids":[1,5]}},{{"answer_hu":"...","ids":[7]}}]}}]}}"""
 
 
 # ---------- segédek ----------
@@ -205,18 +202,6 @@ def quote_ok(quote: str, text_norm: str, words: set) -> bool:
     return len(qw) >= 3 and sum(w in words for w in qw) / len(qw) >= 0.8
 
 
-def score(v):
-    """Pontszám 0-10 közé szorítva; hiányzó vagy érthetetlen érték = None."""
-    try:
-        return max(0, min(10, int(v)))
-    except (TypeError, ValueError):
-        return None
-
-
-def passes(scores, thresholds):
-    return all(thresholds[k] <= 0 or (scores[k] is not None and scores[k] >= thresholds[k]) for k in thresholds)
-
-
 def slug(name):
     return re.sub(r"[^A-Za-z0-9]+", "_", name).strip("_")
 
@@ -294,13 +279,13 @@ def source_ref(entries, quote):
     return best
 
 
-def build_items(extracted, commentators, anchors, thresholds=THRESHOLDS):
+def build_items(extracted, commentators, anchors):
     """Tisztítás, idézet-ellenőrzés, ismétlődések kiszűrése. `anchors`: az érvényes szegmenskulcsok.
     Visszaadja: (items, pointers, statisztika)."""
     texts = {c["name"]: norm(c["text"]) for c in commentators}
     words = {n: set(t.split()) for n, t in texts.items()}
     entries = {c["name"]: c.get("entries", []) for c in commentators}
-    items, pointers, i, low = [], [], 0, 0
+    items, pointers, i = [], [], 0
     for name, rec in extracted:
         for p in rec.get("pointers", []):
             p = normalize_hu(p)
@@ -311,17 +296,11 @@ def build_items(extracted, commentators, anchors, thresholds=THRESHOLDS):
             q, ans = normalize_hu(it.get("question_hu", "")), normalize_hu(it.get("answer_hu", ""))
             if not q or not ans:
                 continue
-            scores = {k: score(it.get(k)) for k in THRESHOLDS}
-            scores["total"] = sum(v for v in scores.values() if v is not None)
-            if not passes(scores, thresholds):
-                low += 1
-                continue
             i += 1
             quote = it.get("quote", "") or ""
             items.append({"id": i, "commentator": name,
                           "anchor": it.get("anchor") if it.get("anchor") in anchors else "CTX",
-                          "explicit": bool(it.get("explicit")), "target": it.get("target"),
-                          "question": q, "answer": ans, "quote": quote, "scores": scores,
+                          "target": it.get("target"), "question": q, "answer": ans, "quote": quote,
                           "ref": source_ref(entries[name], quote),
                           "verified": quote_ok(quote, texts[name], words[name])})
     kept, dups = [], 0
@@ -331,7 +310,7 @@ def build_items(extracted, commentators, anchors, thresholds=THRESHOLDS):
             dups += 1
             continue
         kept.append(x)
-    stats = {"total": len(items), "dups": dups, "low": low, "unverified": sum(not x["verified"] for x in kept)}
+    stats = {"total": len(items), "dups": dups, "unverified": sum(not x["verified"] for x in kept)}
     return kept, pointers, stats
 
 
@@ -340,11 +319,12 @@ def build_items(extracted, commentators, anchors, thresholds=THRESHOLDS):
 async def merge_group(spec, v, key, group_items, a, meter):
     if len(group_items) == 1:
         x = group_items[0]
-        return [{"anchor": key, "question_hu": x["question"], "ids": [x["id"]]}]
+        return [{"anchor": key, "question_hu": x["question"],
+                 "answers": [{"answer_hu": x["answer"], "ids": [x["id"]]}]}]
     desc = ("questions about the wider context/theme, not tied to one specific phrase" if key == "CTX"
             else f"questions tied to the phrase {v.segments[key]}")
     lines = "\n".join(
-        f"{x['id']} | {'explicit' if x['explicit'] else 'implicit'} | {x['target'] or '-'} | "
+        f"{x['id']} | {x['target'] or '-'} | "
         f"{x['question']} || {x['answer'][:200]}" for x in group_items)
     data, *_ = await call_model(spec, merge_system(v).replace("{group_desc}", desc), lines,
                                 a.merge_max_tokens, meter, "merge")
@@ -353,11 +333,26 @@ async def merge_group(spec, v, key, group_items, a, meter):
     seen, clusters = set(), []
     for c in data.get("clusters", []):
         ids = [i for i in c.get("ids", []) if i in valid and i not in seen]
+        if not ids:
+            ids = [i for answer in c.get("answers", []) for i in answer.get("ids", [])
+                   if i in valid and i not in seen]
         seen.update(ids)
         if ids:
-            clusters.append({"anchor": key, "question_hu": normalize_hu(c.get("question_hu", "")), "ids": ids})
+            question = normalize_hu(c.get("question_hu", "")) or by_id[ids[0]]["question"]
+            answer_groups, grouped = [], set()
+            for answer in c.get("answers", []):
+                answer_ids = [i for i in answer.get("ids", []) if i in ids and i not in grouped]
+                if answer_ids:
+                    grouped.update(answer_ids)
+                    answer_groups.append({"answer_hu": normalize_hu(answer.get("answer_hu", ""))
+                                          or by_id[answer_ids[0]]["answer"], "ids": answer_ids})
+            for i in ids:
+                if i not in grouped:
+                    answer_groups.append({"answer_hu": by_id[i]["answer"], "ids": [i]})
+            clusters.append({"anchor": key, "question_hu": question, "answers": answer_groups})
     for i in sorted(valid - seen):  # amit a modell kihagyott, az önálló klaszter lesz
-        clusters.append({"anchor": key, "question_hu": by_id[i]["question"], "ids": [i]})
+        clusters.append({"anchor": key, "question_hu": by_id[i]["question"],
+                         "answers": [{"answer_hu": by_id[i]["answer"], "ids": [i]}]})
     return clusters
 
 
@@ -371,25 +366,25 @@ async def merge_all(spec, v, items, a, meter):
 
 # ---------- megjelenítés ----------
 
-def build_result(v, clusters, items, pointers):
+def build_result(v, clusters, items, pointers) -> dict[str, Any]:
     by_id = {x["id"]: x for x in items}
     groups = OrderedDict((k, []) for k in ["CTX", *v.segments])
     for c in clusters:
         groups[c["anchor"]].append(c)
-    out = {"groups": [], "pointers": pointers}
+    out: dict[str, Any] = {"groups": [], "pointers": pointers}
     for key, cl in groups.items():
         if not cl:
             continue
-        cl.sort(key=lambda c: -len({by_id[i]["commentator"] for i in c["ids"]}))
+        cl.sort(key=lambda c: -len({by_id[i]["commentator"] for answer in c["answers"] for i in answer["ids"]}))
         out["groups"].append({
             "anchor": key, "title": CTX_TITLE if key == "CTX" else v.segments[key], "count": len(cl),
             "clusters": [{
                 "question": c["question_hu"],
-                "implicit": not any(by_id[i]["explicit"] for i in c["ids"]),
-                "n_commentators": len({by_id[i]["commentator"] for i in c["ids"]}),
-                "answers": [{"commentator": by_id[i]["commentator"], "answer": by_id[i]["answer"],
-                             "quote": by_id[i]["quote"], "ref": by_id[i]["ref"],
-                             "verified": by_id[i]["verified"], "scores": by_id[i]["scores"]} for i in c["ids"]],
+                "n_commentators": len({by_id[i]["commentator"] for answer in c["answers"] for i in answer["ids"]}),
+                "answers": [{"answer": answer["answer_hu"],
+                             "sources": [{"commentator": by_id[i]["commentator"], "quote": by_id[i]["quote"],
+                                          "ref": by_id[i]["ref"], "verified": by_id[i]["verified"]}
+                                         for i in answer["ids"]]} for answer in c["answers"]],
             } for c in cl]})
     return out
 
@@ -399,10 +394,11 @@ def render_md(v, result):
     for g in result["groups"]:
         out.append(f"- **{g['title']} ({g['count']})**")
         for c in g["clusters"]:
-            out.append(f"    - {c['question']}{' [implicit]' if c['implicit'] else ''} ({c['n_commentators']})")
+            out.append(f"    - {c['question']} ({c['n_commentators']})")
             for ans in c["answers"]:
-                mark = "" if ans["verified"] else " ⚠"
-                out.append(f"        - {ans['answer']} ({ans['commentator']}{mark})")
+                sources = ", ".join(s["commentator"] + (" ⚠" if not s["verified"] else "")
+                                     for s in ans["sources"])
+                out.append(f"        - {ans['answer']} ({sources})")
     if result["pointers"]:
         out += ["", "## Csak utalást tartalmazó bejegyzések (nem számítanak kérdésnek)"]
         out += [f"- {p['commentator']}: {p['note']}" for p in result["pointers"]]
@@ -418,7 +414,7 @@ def build_meta(v, tag, ex, mg, meter, secs, st):
         return None if not s or s["unknown"] else round(s["cost"], 6)
 
     costs = {k: step_cost(k) for k in ("extract", "merge")}
-    total = None if any(v is None for v in costs.values()) else round(sum(costs.values()), 6)
+    total = None if any(v is None for v in costs.values()) else round(sum(v for v in costs.values() if v is not None), 6)
     return {
         "ref": v.ref, "tag": tag, "extract_model": ex["name"], "merge_model": mg["name"],
         "providers": sorted({ex["provider"], mg["provider"]}),
@@ -442,10 +438,10 @@ async def main_async(a):
     workdir.mkdir(parents=True, exist_ok=True)
     commentators = clean_links(links, a.lang, a.keep_nikud, anchor=verse.ref)
     if not commentators:
-        sys.exit(f"Nincs kommentár a(z) {verse.ref} versre a Sefarián.")
+        sys.exit(f"Nincs feldolgozható forrás a(z) {verse.ref} vershez a Sefarián.")
     (workdir / "cleaned.json").write_text(json.dumps(commentators, ensure_ascii=False, indent=1), encoding="utf-8")
     total = sum(c["chars"] for c in commentators)
-    print(f"Tisztítás: {len(commentators)} magyarázó, {total} karakter (~{total // 3} token durván)")
+    print(f"Tisztítás: {len(commentators)} forrás, {total} karakter (~{total // 3} token durván)")
     for c in sorted(commentators, key=lambda c: -c["chars"])[:5]:
         print(f"  legnagyobb: {c['name']} [{c['lang']}] {c['chars']} kar.")
     if a.dry_run:
@@ -455,12 +451,12 @@ async def main_async(a):
 
     t1 = time.time()
     print(f"Kinyerés ({ex_spec['name']}, párhuzamosan: {a.concurrency})")
-    extracted = await extract_all(ex_spec, extract_system(verse), commentators, a, meter, workdir)
+    extracted = await extract_all(ex_spec, extract_system(verse, rashi_reference(commentators)), commentators, a, meter, workdir)
     items, pointers, st = build_items(extracted, commentators, verse.segments)
     (workdir / "items.json").write_text(json.dumps(items, ensure_ascii=False, indent=1), encoding="utf-8")
     t2 = time.time()
     print(f"  -> {st['total']} kérdés, {st['dups']} ismétlődés kiszűrve, {len(pointers)} csak-utalás, "
-          f"{st['unverified']} nem igazolt idézet, {st['low']} küszöb alatti ({t2 - t1:.1f}s)")
+          f"{st['unverified']} nem igazolt idézet ({t2 - t1:.1f}s)")
 
     print(f"Összevonás ({mg_spec['name']}, horgonyonként párhuzamosan)")
     clusters = await merge_all(mg_spec, verse, items, a, meter)
