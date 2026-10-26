@@ -123,7 +123,7 @@ async def run_job(dot: str, human: str) -> None:
             nonlocal total, done
             tail.append(line)
             del tail[:-15]
-            if m := re.match(r"Tisztítás: (\d+) magyarázó", line):
+            if m := re.match(r"Tisztítás: (\d+) (?:forrás|magyarázó)", line):
                 total = int(m.group(1))
                 job.update(stage=f"Kinyerés: 0/{total} magyarázó", progress=10)
             elif total and re.match(r"  .+: \d+ kérdés, \d+ utalás", line):

@@ -248,6 +248,8 @@ async def extract_all(spec, system, commentators, a, meter, workdir):
                     meter.add("extract", spec, cached["tin"], cached["tout"], cached=True)
                 else:
                     meter.add_unknown_cached("extract", spec)
+                print(f"  {c['name']}: {len(cached['items'])} kérdés, "
+                      f"{len(cached['pointers'])} utalás (gyorsítótár)")
                 return c["name"], cached
         async with sem:
             data, tin, tout, secs = await call_model(spec, system, f"Commentator: {c['name']}\n\n{c['text']}",
