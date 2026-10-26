@@ -92,7 +92,7 @@ function renderPanel(v){
           `${s.verified===false?' <span class="warn" title="az idézet nem található a szövegben">⚠</span>':""}`).join(", ");
         const quotes=sources.filter(s=>s.quote).map(s=>`<div class="quote">${whoLink(s.commentator,s.ref)}: „${esc(s.quote)}"</div>`).join("");
         const commentators=esc(JSON.stringify([...new Set(sources.map(s=>s.commentator))]));
-        h+=`<div class="l3" data-commentators="${commentators}"><span class="t">${esc(a.answer)}</span> (${names})${quotes}</div>`;
+        h+=`<div class="l3" data-commentators="${commentators}" data-search="${esc(sources.map(s=>s.commentator+" "+(s.ref||"")).join(" ").toLowerCase())}"><span class="t">${esc(a.answer)}</span> (${names})${quotes}</div>`;
       });
       h+="</details>";
     });
@@ -100,7 +100,7 @@ function renderPanel(v){
   });
   if(v.pointers&&v.pointers.length){
     h+=`<details class="l1"><summary>Csak utalás (nem kérdés)<span class="n group-count">${v.pointers.length}</span></summary>`+
-    v.pointers.map(p=>`<div class="l3 ptr">${whoLink(p.commentator,p.ref)}: ${esc(p.note)}</div>`).join("")+"</details>";
+    v.pointers.map(p=>`<div class="l3 ptr" data-search="${esc((p.commentator+" "+(p.ref||"")).toLowerCase())}">${whoLink(p.commentator,p.ref)}: ${esc(p.note)}</div>`).join("")+"</details>";
   }
   return h+"</div>";
 }
@@ -121,7 +121,7 @@ function applySearch(){
         const questionMatches=!t||cluster.querySelector(".t").textContent.toLowerCase().includes(t);
         const answers=[...cluster.querySelectorAll(".l3")];
         answers.forEach(answer=>{
-          answer.classList.toggle("hidden",!questionMatches&&t&&!answer.textContent.toLowerCase().includes(t));
+          answer.classList.toggle("hidden",!questionMatches&&t&&!(answer.textContent+" "+(answer.dataset.search||"")).toLowerCase().includes(t));
         });
         const visibleAnswers=answers.filter(answer=>!answer.classList.contains("hidden"));
         const visible=questionMatches||visibleAnswers.length>0;
@@ -137,7 +137,7 @@ function applySearch(){
     }else{
       const pointers=[...group.querySelectorAll(".l3")];
       pointers.forEach(pointer=>{
-        pointer.classList.toggle("hidden",t&&!pointer.textContent.toLowerCase().includes(t));
+        pointer.classList.toggle("hidden",t&&!(pointer.textContent+" "+(pointer.dataset.search||"")).toLowerCase().includes(t));
       });
       const visibleCount=pointers.filter(pointer=>!pointer.classList.contains("hidden")).length;
       group.classList.toggle("hidden",!visibleCount);
