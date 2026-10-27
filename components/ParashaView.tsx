@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { CommentaryEntry, RowData } from "@/lib/types";
 import BilingualTable from "./BilingualTable";
 import CommentaryPanel from "./CommentaryPanel";
@@ -35,7 +35,36 @@ export default function ParashaView({
   const [panelOpen, setPanelOpen] = useState(false);
   const [activeInfo, setActiveInfo] = useState<ActiveInfo | undefined>();
   const [currentChapter, setCurrentChapter] = useState<number | null>(null);
+  const [aiDone, setAiDone] = useState<Set<string>>(new Set());
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Verses that already have an AI summary: loaded once, then extended whenever a map finishes.
+  useEffect(() => {
+    const api = process.env.NEXT_PUBLIC_API_BASE ?? "/api";
+    fetch(`${api}/maps`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { done: string[] } | null) => {
+        if (d) setAiDone((prev) => new Set([...prev, ...d.done]));
+      })
+      .catch(() => {});
+  }, []);
+
+  const markAiDone = useCallback((ref: string) => {
+    setAiDone((prev) => (prev.has(ref) ? prev : new Set(prev).add(ref)));
+  }, []);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    container.querySelectorAll<HTMLElement>("a.verse-link[data-book]").forEach((a) => {
+      const { book, chapter, verse } = a.dataset;
+      const key = `${book}.${chapter}.${verse}`;
+      const on = aiDone.has(key);
+      const cls = `vrs-ch${chapter}-vrs${verse}`;
+      a.classList.toggle("has-ai", on);
+      container.querySelectorAll(`.${cls}`).forEach((n) => n.classList.toggle("has-ai", on));
+    });
+  }, [aiDone, rows]);
 
   function goToChapter(chapter: number) {
     containerRef.current
@@ -201,6 +230,7 @@ export default function ParashaView({
         sefariaHref={sefariaHref}
         sefariaLabel={sefariaLabel}
         mapRef={mapRef}
+        onMapDone={markAiDone}
         commentaries={commentaries}
       />
     </div>

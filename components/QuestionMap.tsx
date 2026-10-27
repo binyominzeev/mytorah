@@ -6,7 +6,7 @@ const API = process.env.NEXT_PUBLIC_API_BASE ?? "/api";
 
 type Status = { state: "none" | "queued" | "running" | "done" | "error"; stage?: string; progress?: number; error?: string };
 
-export default function QuestionMap({ mapRef }: { mapRef: string }) {
+export default function QuestionMap({ mapRef, onDone }: { mapRef: string; onDone?: (ref: string) => void }) {
   const [status, setStatus] = useState<Status | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const current = useRef(mapRef);
@@ -26,7 +26,7 @@ export default function QuestionMap({ mapRef }: { mapRef: string }) {
     if (current.current !== ref) return null;
     setStatus(s);
     return s;
-  }, []);
+  }, [onDone]);
 
   const poll = useCallback(
     async (ref: string) => {

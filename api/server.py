@@ -3,6 +3,7 @@
 GET  /api/map/{ref}          -> állapot: none | queued | running | done | error (+ progress, stage)
 POST /api/map/{ref}          -> elindítja a generálást (ha már kész vagy fut, nem csinál semmit)
 POST /api/map/{ref}/refresh  -> kész térkép újragenerálása (új értékelések, prompt); a letöltött adatot újrahasznosítja
+GET  /api/maps               -> a már elkészült versek listája (a szöveg kiemeléséhez)
 GET  /api/map/{ref}/html     -> a kész, önálló HTML (iframe-be tölthető)
 
 A {ref} alakja: Genesis.17.17. A kész eredmények a meforshim/out/ alatt maradnak (gyorsítótár).
@@ -163,6 +164,14 @@ def status(dot: str) -> dict:
 async def _startup() -> None:
     global sem
     sem = asyncio.Semaphore(MAX_PARALLEL)
+
+
+@app.get("/api/maps")
+async def list_done():
+    """Minden vers, aminek már kész a térképe — a mappák szkennelése, így mindig friss."""
+    done = sorted(p.parent.name for p in OUT.glob("*/kerdes-terkep.html")
+                  if re.fullmatch(r"\w+\.\d+\.\d+", p.parent.name))
+    return {"done": done}
 
 
 @app.get("/api/map/{ref}")

@@ -10,6 +10,7 @@ export default function CommentaryPanel({
   sefariaHref,
   sefariaLabel,
   mapRef,
+  onMapDone,
   commentaries,
 }: {
   open: boolean;
@@ -17,6 +18,7 @@ export default function CommentaryPanel({
   sefariaHref?: string;
   sefariaLabel?: string;
   mapRef?: string;
+  onMapDone?: (ref: string) => void;
   commentaries: CommentaryEntry[];
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -133,7 +135,7 @@ export default function CommentaryPanel({
           és megjelenik itt a Sefaria-link.
         </div>
       )}
-      {mapRef && <QuestionMap mapRef={mapRef} />}
+      {mapRef && <QuestionMap mapRef={mapRef} onDone={onMapDone} />}
       {commentaries.map((c) => (
         <div key={c.id} id={`commentary-${c.id}`} className="commentary" dangerouslySetInnerHTML={{ __html: c.html }} />
       ))}
