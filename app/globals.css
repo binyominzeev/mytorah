@@ -625,7 +625,7 @@ body.panels-collapsed .qmap{ display:none; }
     background:rgba(222,190,112,.25);
     border-color:#b99751;
 }
-.bilingual-table td.he p > a.has-ai strong{ color:#e8cf8d; }
+.bilingual-table td.he p > a.has-ai strong{ color:var(--gold-dim); }
 .bilingual-table td.he p > a.has-ai:hover,
 .bilingual-table td.he p > a.has-ai.verse-hover{ background:#b99751; }
 .bilingual-table td.he p > a.has-ai.active-verse{ background:var(--gold); }
