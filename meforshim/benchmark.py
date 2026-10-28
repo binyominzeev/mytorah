@@ -112,7 +112,7 @@ def analyse_extract(spec, done, sample):
         trunc += bool(rec["truncated"])
         if rec["error"]:
             errors += 1
-            extracted.append((c["name"], {"items": [], "pointers": []}))
+            extracted.append((c["name"], {"items": []}))
             continue
         try:
             data = P.parse_json(rec["raw"])
@@ -120,7 +120,7 @@ def analyse_extract(spec, done, sample):
                 raise ValueError
         except (ValueError, json.JSONDecodeError):
             fails += 1
-            extracted.append((c["name"], {"items": [], "pointers": []}))
+            extracted.append((c["name"], {"items": []}))
             continue
         items = [it for it in data.get("items", []) if isinstance(it, dict)]
         for it in items:
@@ -130,12 +130,12 @@ def analyse_extract(spec, done, sample):
                 total_chars += len(raw)
                 lost_chars += len(raw) - len(san)
                 name_fixed += P.normalize_hu(raw) != san
-        extracted.append((c["name"], {"items": items, "pointers": data.get("pointers", []) or []}))
-    kept, pointers, st = P.build_items(extracted, sample, VERSE.segments)
+        extracted.append((c["name"], {"items": items}))
+    kept, st = P.build_items(extracted, sample, VERSE.segments)
     n = len(sample)
     cst = cost(spec, tin, tout)
     return {
-        "items": kept, "pointers": pointers, "calls": n, "errors": errors, "json_fail": fails, "truncated": trunc,
+        "items": kept, "calls": n, "errors": errors, "json_fail": fails, "truncated": trunc,
         "lat_p50": statistics.median(lat), "lat_p95": sorted(lat)[min(len(lat) - 1, int(len(lat) * 0.95))],
         "tin": tin, "tout": tout, "cost": cst,
         "n_items": len(kept), "items_per_comm": len(kept) / n,

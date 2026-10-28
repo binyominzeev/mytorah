@@ -58,7 +58,6 @@ a.who:hover{text-decoration:underline}
 .hl{background:#ffe06655;border-radius:3px}
 .hidden{display:none}
 .sc{font-size:11px;color:var(--mut);margin-left:6px;white-space:nowrap}
-.ptr{font-size:14px;color:var(--mut)}
 </style></head><body>
 <header><h1>__REF__ — kérdés-térkép</h1>
 <div class="verse" id="verse"></div></header>
@@ -98,10 +97,6 @@ function renderPanel(v){
     });
     h+="</details>";
   });
-  if(v.pointers&&v.pointers.length){
-    h+=`<details class="l1"><summary>Csak utalás (nem kérdés)<span class="n group-count">${v.pointers.length}</span></summary>`+
-    v.pointers.map(p=>`<div class="l3 ptr" data-search="${esc((p.commentator+" "+(p.ref||"")).toLowerCase())}">${whoLink(p.commentator,p.ref)}: ${esc(p.note)}</div>`).join("")+"</details>";
-  }
   return h+"</div>";
 }
 
@@ -134,14 +129,6 @@ function applySearch(){
       });
       group.classList.toggle("hidden",!visibleCount);
       group.querySelector(".group-count").textContent=visibleCount;
-    }else{
-      const pointers=[...group.querySelectorAll(".l3")];
-      pointers.forEach(pointer=>{
-        pointer.classList.toggle("hidden",t&&!(pointer.textContent+" "+(pointer.dataset.search||"")).toLowerCase().includes(t));
-      });
-      const visibleCount=pointers.filter(pointer=>!pointer.classList.contains("hidden")).length;
-      group.classList.toggle("hidden",!visibleCount);
-      group.querySelector(".group-count").textContent=visibleCount;
     }
   });
 }
@@ -160,6 +147,7 @@ def build(vdir, tag=None):
     if not files:
         return None
     data = json.load(open(max(files, key=os.path.getmtime), encoding="utf-8"))
+    data.pop("pointers", None)
     verse = json.load(open(os.path.join(vdir, "verse.json"), encoding="utf-8"))
     payload = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
     html = (PAGE.replace("__DATA__", payload).replace("__VERSE__", json.dumps(verse["text"], ensure_ascii=False))

@@ -620,19 +620,19 @@ tr.verse-row{ transition:background .2s ease; }
 .qmap-frame{ width:100%; height:calc(100vh - 200px); min-height:360px; border:1px solid var(--ink-line); border-radius:8px; }
 body.panels-collapsed .qmap{ display:none; }
 
-/* verses that already have an AI summary (dusty rose) */
+/* verses that already have an AI summary (light honey gold) */
 .bilingual-table td.he p > a.has-ai{
-    background:rgba(190,100,115,.28);
-    border-color:#b4586a;
+    background:rgba(222,190,112,.25);
+    border-color:#b99751;
 }
-.bilingual-table td.he p > a.has-ai strong{ color:#e29aa8; }
+.bilingual-table td.he p > a.has-ai strong{ color:#e8cf8d; }
 .bilingual-table td.he p > a.has-ai:hover,
-.bilingual-table td.he p > a.has-ai.active-verse,
-.bilingual-table td.he p > a.has-ai.verse-hover{ background:#b4586a; }
-.bilingual-table td.hu .vrs-num.has-ai{ background:rgba(190,100,115,.28); color:#e29aa8; }
+.bilingual-table td.he p > a.has-ai.verse-hover{ background:#b99751; }
+.bilingual-table td.he p > a.has-ai.active-verse{ background:var(--gold); }
+.bilingual-table td.hu .vrs-num.has-ai{ background:rgba(222,190,112,.25); color:#e8cf8d; }
 .bilingual-table td.hu .vrs-num.has-ai:hover,
-.bilingual-table td.hu .vrs-num.has-ai.active-verse,
-.bilingual-table td.hu .vrs-num.has-ai.verse-hover{ background:#b4586a; color:var(--ink); }
-.verse-text.has-ai{ background:rgba(190,100,115,.13); }
-.verse-text.has-ai.verse-hover,
-.verse-text.has-ai.active-verse{ background:rgba(190,100,115,.24); }
+.bilingual-table td.hu .vrs-num.has-ai.verse-hover{ background:#b99751; color:var(--ink); }
+.bilingual-table td.hu .vrs-num.has-ai.active-verse{ background:var(--gold); color:var(--ink); }
+.verse-text.has-ai{ background:rgba(222,190,112,.11); }
+.verse-text.has-ai.verse-hover{ background:rgba(185,151,81,.24); }
+.verse-text.has-ai.active-verse{ background:rgba(201,162,75,.16); }

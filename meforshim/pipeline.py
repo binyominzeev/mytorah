@@ -88,15 +88,13 @@ ANCHOR RULES:
 - Use CTX when the question needs the whole verse or several phrases to be understood, or goes beyond the verse: the characters' motives overall, the relation to earlier or later verses and chapters, theology, the nature of miracles, chronology, midrashic additions, narrative gaps.
 - Illustration (generic): "Does word X mean A or B?" -> the segment containing X. "Why is person P rebuked and person Q not?" -> CTX. "Did P doubt the promise?" -> CTX. "Why is word Y repeated before Z?" -> the segment containing Y or Z.
 
-CROSS-REFERENCES: if the commentator (or an entry in it) only points elsewhere ("see Radak", "see another verse", "see Bereshit Rabbah") without content of its own, do NOT create an item; add a one-line Hungarian note to "pointers".
-
 STYLE:
 - "question_hu": Hungarian, self-contained, phrased about the verse itself (not "why does X say..."), so the same question from different commentators gets similar wording. Keep Hebrew words in Hebrew.
 - "answer_hu": ONE short Hungarian sentence with this commentator's answer.
 - Use exactly these spellings in Hungarian text: {NAMES_HINT}.
 
 Output ONLY valid JSON, no prose, no code fences:
-{{"pointers":["..."],"items":[{{"anchor":"{last}","target":null,"question_hu":"...","answer_hu":"...","quote":"..."}}]}}"""
+{{"items":[{{"anchor":"{last}","target":null,"question_hu":"...","answer_hu":"...","quote":"..."}}]}}"""
 
 def merge_system(v):
     """A "{group_desc}" helyére a hívó írja a csoport leírását."""
@@ -248,16 +246,14 @@ async def extract_all(spec, system, commentators, a, meter, workdir):
                     meter.add("extract", spec, cached["tin"], cached["tout"], cached=True)
                 else:
                     meter.add_unknown_cached("extract", spec)
-                print(f"  {c['name']}: {len(cached['items'])} kérdés, "
-                      f"{len(cached['pointers'])} utalás (gyorsítótár)")
+                print(f"  {c['name']}: {len(cached['items'])} kérdés (gyorsítótár)")
                 return c["name"], cached
         async with sem:
             data, tin, tout, secs = await call_model(spec, system, f"Commentator: {c['name']}\n\n{c['text']}",
                                                      a.extract_max_tokens, meter, "extract")
-            rec = {"hash": h, "items": data.get("items", []), "pointers": data.get("pointers", []),
-                   "tin": tin, "tout": tout}
+            rec = {"hash": h, "items": data.get("items", []), "tin": tin, "tout": tout}
             f.write_text(json.dumps(rec, ensure_ascii=False, indent=1), encoding="utf-8")
-            print(f"  {c['name']}: {len(rec['items'])} kérdés, {len(rec['pointers'])} utalás ({secs:.1f}s)")
+            print(f"  {c['name']}: {len(rec['items'])} kérdés ({secs:.1f}s)")
             return c["name"], rec
 
     return await asyncio.gather(*(one(c) for c in commentators))
@@ -282,17 +278,12 @@ def source_ref(entries, quote):
 
 def build_items(extracted, commentators, anchors):
     """Tisztítás, idézet-ellenőrzés, ismétlődések kiszűrése. `anchors`: az érvényes szegmenskulcsok.
-    Visszaadja: (items, pointers, statisztika)."""
+    Visszaadja: (items, statisztika)."""
     texts = {c["name"]: norm(c["text"]) for c in commentators}
     words = {n: set(t.split()) for n, t in texts.items()}
     entries = {c["name"]: c.get("entries", []) for c in commentators}
-    items, pointers, i = [], [], 0
+    items, i = [], 0
     for name, rec in extracted:
-        for p in rec.get("pointers", []):
-            p = normalize_hu(p)
-            if p:
-                pointers.append({"commentator": name, "note": p,
-                                 "ref": entries[name][0]["ref"] if entries[name] else None})
         for it in rec.get("items", []):
             q, ans = normalize_hu(it.get("question_hu", "")), normalize_hu(it.get("answer_hu", ""))
             if not q or not ans:
@@ -312,7 +303,7 @@ def build_items(extracted, commentators, anchors):
             continue
         kept.append(x)
     stats = {"total": len(items), "dups": dups, "unverified": sum(not x["verified"] for x in kept)}
-    return kept, pointers, stats
+    return kept, stats
 
 
 # ---------- 3. lépés: összevonás horgonyonként, párhuzamosan ----------
@@ -367,12 +358,12 @@ async def merge_all(spec, v, items, a, meter):
 
 # ---------- megjelenítés ----------
 
-def build_result(v, clusters, items, pointers) -> dict[str, Any]:
+def build_result(v, clusters, items) -> dict[str, Any]:
     by_id = {x["id"]: x for x in items}
     groups = OrderedDict((k, []) for k in ["CTX", *v.segments])
     for c in clusters:
         groups[c["anchor"]].append(c)
-    out: dict[str, Any] = {"groups": [], "pointers": pointers}
+    out: dict[str, Any] = {"groups": []}
     for key, cl in groups.items():
         if not cl:
             continue
@@ -400,9 +391,6 @@ def render_md(v, result):
                 sources = ", ".join(s["commentator"] + (" ⚠" if not s["verified"] else "")
                                      for s in ans["sources"])
                 out.append(f"        - {ans['answer']} ({sources})")
-    if result["pointers"]:
-        out += ["", "## Csak utalást tartalmazó bejegyzések (nem számítanak kérdésnek)"]
-        out += [f"- {p['commentator']}: {p['note']}" for p in result["pointers"]]
     out += ["", "⚠ = az alátámasztó idézet nem található a magyarázó szövegében, kézzel ellenőrizendő."]
     return "\n".join(out) + "\n"
 
@@ -453,10 +441,10 @@ async def main_async(a):
     t1 = time.time()
     print(f"Kinyerés ({ex_spec['name']}, párhuzamosan: {a.concurrency})")
     extracted = await extract_all(ex_spec, extract_system(verse, rashi_reference(commentators)), commentators, a, meter, workdir)
-    items, pointers, st = build_items(extracted, commentators, verse.segments)
+    items, st = build_items(extracted, commentators, verse.segments)
     (workdir / "items.json").write_text(json.dumps(items, ensure_ascii=False, indent=1), encoding="utf-8")
     t2 = time.time()
-    print(f"  -> {st['total']} kérdés, {st['dups']} ismétlődés kiszűrve, {len(pointers)} csak-utalás, "
+    print(f"  -> {st['total']} kérdés, {st['dups']} ismétlődés kiszűrve, "
           f"{st['unverified']} nem igazolt idézet ({t2 - t1:.1f}s)")
 
     print(f"Összevonás ({mg_spec['name']}, horgonyonként párhuzamosan)")
@@ -465,7 +453,7 @@ async def main_async(a):
     t3 = time.time()
     print(f"  -> {len(clusters)} kérdés-klaszter ({t3 - t2:.1f}s)")
 
-    result = build_result(verse, clusters, items, pointers)
+    result = build_result(verse, clusters, items)
     result["meta"] = build_meta(verse, tag, ex_spec, mg_spec, meter,
                                 {"extract": round(t2 - t1, 1), "merge": round(t3 - t2, 1), "total": round(t3 - t0, 1)}, st)
     (outdir / f"result-{tag}.json").write_text(json.dumps(result, ensure_ascii=False, indent=1), encoding="utf-8")
