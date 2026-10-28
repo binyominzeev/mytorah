@@ -629,7 +629,7 @@ body.panels-collapsed .qmap{ display:none; }
 .bilingual-table td.he p > a.has-ai:hover,
 .bilingual-table td.he p > a.has-ai.verse-hover{ background:#b99751; }
 .bilingual-table td.he p > a.has-ai.active-verse{ background:var(--gold); }
-.bilingual-table td.hu .vrs-num.has-ai{ background:rgba(222,190,112,.25); color:#e8cf8d; }
+.bilingual-table td.hu .vrs-num.has-ai{ background:rgba(222,190,112,.25); }
 .bilingual-table td.hu .vrs-num.has-ai:hover,
 .bilingual-table td.hu .vrs-num.has-ai.verse-hover{ background:#b99751; color:var(--ink); }
 .bilingual-table td.hu .vrs-num.has-ai.active-verse{ background:var(--gold); color:var(--ink); }
