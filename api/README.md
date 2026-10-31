@@ -10,6 +10,8 @@ cp meforshim/.env.example meforshim/.env   # add the LLM keys
 cd api && ../venv/bin/uvicorn server:app --host 127.0.0.1 --port 8001
 ```
 
+Talmud segments work the same way (`Berakhot.2a.5`, used by [../talmud](../talmud)).
+
 Endpoints: `GET/POST /api/map/Genesis.17.17` (status/start), `GET /api/map/Genesis.17.17/html`.
 Env: `MAX_PARALLEL_JOBS` (2), `MAX_NEW_PER_DAY` (200), `MEFORSHIM_OUT`, `ALLOWED_ORIGINS` (dev CORS).
 The frontend uses `/api` (nginx proxy, see `deploy/`); override with `NEXT_PUBLIC_API_BASE`.

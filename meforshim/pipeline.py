@@ -47,6 +47,11 @@ NAME_FIXES = [
     (r"\b(?:Ra'am|Ra\"m|Re'em|Ráma|Ramah|Ra'm|Rá\"m|Ra\"am)\b", "Re'm"),
 ]
 
+TALMUD_NOTE = """The passage is a short section (a Mishna and/or Gemara, in Hebrew/Aramaic) of the Talmud. The commentators are e.g. Rashi, Tosafot, Rashba, Ritva, Meiri, Maharsha, Steinsaltz and others; a commentator's dibur hamatchil (headword, marked «...») points to the phrase he explains.
+Questions include: why the Mishna/Gemara says something, a contradiction with another passage, the source of a halakha, a difficulty ("kashya", "tmiha", "vahaDtanya"), the meaning of a term, or the reading of the text (girsa). Keep Talmudic terms (e.g. sugya, kashya, tzarich iyun) in transliterated Hebrew. Treat "the passage" wherever the instructions say "the verse".
+"""
+
+
 def rashi_reference(commentators):
     rashi = next((c for c in commentators if c["name"].strip().casefold() in {"rashi", "rashi on torah"}), None)
     return rashi["text"] if rashi else ""
@@ -57,9 +62,10 @@ def extract_system(v, rashi_text=""):
     last = list(v.segments)[-1]
     rashi_context = (f"\nREFERENCE ONLY — RASHI'S COMMENTARY ON THIS VERSE:\n{rashi_text}\n"
                      if rashi_text else "")
-    return f"""You analyze one classical Jewish commentary on a Torah verse, to build a map of the QUESTIONS the commentators address.
-
-VERSE ({v.ref}):
+    what = "a passage of the Babylonian Talmud" if v.talmud else "a Torah verse"
+    return f"""You analyze one classical Jewish commentary on {what}, to build a map of the QUESTIONS the commentators address.
+{TALMUD_NOTE if v.talmud else ""}
+{"PASSAGE" if v.talmud else "VERSE"} ({v.ref}):
 {v.text}
 
 Verse segments (keys for "anchor"):
@@ -98,7 +104,7 @@ Output ONLY valid JSON, no prose, no code fences:
 
 def merge_system(v):
     """A "{group_desc}" helyére a hívó írja a csoport leírását."""
-    return f"""You receive questions about {v.ref} extracted from different commentators. All lines belong to ONE group: {{group_desc}}.
+    return f"""You receive questions about {v.ref} ({"a Talmud passage" if v.talmud else "a Torah verse"}) extracted from different commentators. All lines belong to ONE group: {{group_desc}}.
 Line format: id | target | question || answer (shortened)
 
 Task:
@@ -441,7 +447,8 @@ async def main_async(a):
     t1 = time.time()
     print(f"Kinyerés ({ex_spec['name']}, párhuzamosan: {a.concurrency})")
     extracted = await extract_all(ex_spec, extract_system(verse, rashi_reference(commentators)), commentators, a, meter, workdir)
-    items, st = build_items(extracted, commentators, verse.segments)
+    # Talmudnál nincs kifejezés szerinti csoportosítás: minden kérdés egy csoportba (CTX) kerül, így a szegmenseken átívelő azonos kérdések is összevonódnak.
+    items, st = build_items(extracted, commentators, {} if verse.talmud else verse.segments)
     (workdir / "items.json").write_text(json.dumps(items, ensure_ascii=False, indent=1), encoding="utf-8")
     t2 = time.time()
     print(f"  -> {st['total']} kérdés, {st['dups']} ismétlődés kiszűrve, "

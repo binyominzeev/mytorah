@@ -38,7 +38,7 @@ YERUSHALMI_TRACTATES = frozenset({
 def supported_source(entry: dict) -> bool:
     category = entry.get("category")
     title = re.sub(r"[^a-z0-9]+", " ", (entry.get("index_title") or "").casefold()).strip()
-    if category == "Commentary":
+    if category in ("Commentary", "Chasidut"):
         return True
     if category == "Kabbalah":
         return title.startswith("zohar")
@@ -60,8 +60,8 @@ def anchor_matches(entry: dict, anchor: str) -> bool:
     expanded = entry.get("anchorRefExpanded") or []
     if anchor in expanded:
         return True
-    match = re.fullmatch(r"(.+?)\s+(\d+):(\d+)-(\d+)", entry.get("anchorRef", ""))
-    target = re.fullmatch(r"(.+?)\s+(\d+):(\d+)", anchor)
+    match = re.fullmatch(r"(.+?)\s+(\d+[ab]?):(\d+)-(\d+)", entry.get("anchorRef", ""))
+    target = re.fullmatch(r"(.+?)\s+(\d+[ab]?):(\d+)", anchor)
     return bool(match and target and match.group(1) == target.group(1)
                 and match.group(2) == target.group(2)
                 and int(match.group(3)) <= int(target.group(3)) <= int(match.group(4)))
@@ -126,7 +126,7 @@ def pick(entry: dict, lang: str):
 
 def clean_links(data, lang="auto", keep_nikud=False, anchor=None, category=None):
     """`data`: Sefaria /api/links lista. `anchor`: ezt a verset lefedő horgonyok; alapból a kommentárok,
-    Zohár, Bavli és Yerushalmi forrásai maradnak meg."""
+    Chasidut könyvek, Zohár, Bavli és Yerushalmi forrásai maradnak meg."""
     groups = OrderedDict()
     for e in data:
         if category and e.get("category") != category:
@@ -135,6 +135,8 @@ def clean_links(data, lang="auto", keep_nikud=False, anchor=None, category=None)
             continue
         if anchor and not anchor_matches(e, anchor):
             continue
+        if anchor and e.get("category") == "Talmud" and anchor.startswith(f"{e.get('index_title')} "):
+            continue  # a Talmud-szakasz saját traktátusa (a Gemara maga) nem "magyarázó" a saját oldalán
         code, raw = pick(e, lang)
         txt = clean_text(raw, keep_nikud)
         if not txt:

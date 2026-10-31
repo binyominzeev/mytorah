@@ -36,6 +36,8 @@ A kimenet egy beágyazott (nested) lista:
 
 A teljes kimenet futásonként: `out/<Könyv.fej.vers>/result-<tag>.md` és `.json` (a `<tag>` alapból a modell neve), pl. `out/Genesis.17.17/result-openai-luna.md`. Az összehasonlítóhoz lásd a `viewer.py`-t.
 
+**Talmud:** a Bavli egy Sefaria-szakasza is megadható (pl. `"Berakhot 2a:5"`, a `talmud/` alprojekt használja). A szöveget a tagmondat-határoknál bontja szegmensekre (`segment_talmud`), a forrás a Sefaria szakaszra horgonyzott kommentárjai (Rashi, Tosafot, Rishonim stb.); a Gemara saját traktátusa kimarad.
+
 ## Hogyan működik
 
 ```

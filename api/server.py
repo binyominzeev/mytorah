@@ -6,7 +6,7 @@ POST /api/map/{ref}/refresh  -> kész térkép újragenerálása (új értékel�
 GET  /api/maps               -> a már elkészült versek listája (a szöveg kiemeléséhez)
 GET  /api/map/{ref}/html     -> a kész, önálló HTML (iframe-be tölthető)
 
-A {ref} alakja: Genesis.17.17. A kész eredmények a meforshim/out/ alatt maradnak (gyorsítótár).
+A {ref} alakja: Genesis.17.17, vagy Talmud-szakasznál Berakhot.2a.3 (Rosh_Hashanah.2a.3 stb.). A kész eredmények a meforshim/out/ alatt maradnak (gyorsítótár).
 Indítás az api/ mappából: uvicorn server:app --host 127.0.0.1 --port 8001
 """
 import asyncio
@@ -41,7 +41,7 @@ sem: asyncio.Semaphore | None = None
 
 
 def parse(ref: str) -> tuple[str, str]:
-    """-> ('Genesis.17.17', 'Genesis 17:17'); 404, ha nem Tóra-vers."""
+    """-> ('Genesis.17.17', 'Genesis 17:17'); 404, ha nem Tóra-vers vagy Bavli-szakasz."""
     try:
         book, ch, v = sefaria.parse_ref(ref)
     except (SystemExit, Exception):
@@ -66,7 +66,7 @@ button:hover{border-color:#c9a24b}
 summary{padding:3px 5px}
 summary:hover{background:rgba(255,255,255,.04)}
 .l1>summary{font-size:14.5px;font-weight:600;color:var(--acc)}
-.l2{margin-left:14px}.l2>summary{font-size:14px;font-weight:500}
+.l2{margin-left:14px}.flat>.l2{margin-left:0}.l2>summary{font-size:14px;font-weight:500}
 .l3{margin-left:30px;border-left:2px solid #8a7038;font-size:13.5px;color:var(--fg)}
 .n,.tag{font:11px var(--font-ui,system-ui,sans-serif);color:var(--mut)}
 .who{color:var(--acc);font-weight:600}
@@ -81,8 +81,10 @@ def html_path(dot: str) -> Path:
 
 
 def build_html(dot: str) -> bool:
+    import importlib
     import viewer
     try:
+        importlib.reload(viewer)  # a viewer.py módosítása újraindítás nélkül is érvényesül
         return bool(viewer.build(str(OUT / dot)))
     except Exception:
         traceback.print_exc()
@@ -170,7 +172,7 @@ async def _startup() -> None:
 async def list_done():
     """Minden vers, aminek már kész a térképe — a mappák szkennelése, így mindig friss."""
     done = sorted(p.parent.name for p in OUT.glob("*/kerdes-terkep.html")
-                  if re.fullmatch(r"\w+\.\d+\.\d+", p.parent.name))
+                  if re.fullmatch(r"\w+\.\d+[ab]?\.\d+", p.parent.name))
     return {"done": done}
 
 

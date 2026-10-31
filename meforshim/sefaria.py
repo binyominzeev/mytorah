@@ -1,6 +1,7 @@
-"""Sefaria-letöltés és a vers előkészítése (Tóra, bármelyik pászuk).
+"""Sefaria-letöltés és a vers előkészítése (Tóra, bármelyik pászuk; Bavli, bármelyik ámud-szakasz).
 
-- parse_ref: "Genesis 17:17", "Exodus.3.14", "Devarim 6:4" ... -> (könyv, fejezet, vers)
+- parse_ref: "Genesis 17:17", "Exodus.3.14", "Devarim 6:4", "Berakhot 2a:3" ... -> (könyv, fejezet, vers);
+  a Talmudnál a fejezet az ámud ("2a"), a "vers" a Sefaria szakasza, a könyv szóköz helyett aláhúzással ("Rosh_Hashanah")
 - prepare: letölti (és gyorsítótárazza) a héber verset és a közvetlen forráslinkeket, a verset szegmensekre bontja
 """
 import html
@@ -23,6 +24,12 @@ BOOKS = {
     "Numbers": ["numbers", "num", "nu", "bamidbar", "bemidbar", "במדבר"],
     "Deuteronomy": ["deuteronomy", "deut", "dt", "devarim", "dvarim", "דברים"],
 }
+TRACTATES = [t.replace(" ", "_") for t in (
+    "Berakhot, Shabbat, Eruvin, Pesachim, Rosh Hashanah, Yoma, Sukkah, Beitzah, Taanit, Megillah, Moed Katan, "
+    "Chagigah, Yevamot, Ketubot, Nedarim, Nazir, Sotah, Gittin, Kiddushin, Bava Kamma, Bava Metzia, Bava Batra, "
+    "Sanhedrin, Makkot, Shevuot, Avodah Zarah, Horayot, Zevachim, Menachot, Chullin, Bekhorot, Arakhin, Temurah, "
+    "Keritot, Meilah, Tamid, Niddah").split(", ")]
+TRACTATE_KEYS = {re.sub(r"[^a-z]", "", t.lower()): t for t in TRACTATES}
 ALIASES = {alias: book for book, names in BOOKS.items() for alias in names}
 
 TAAMIM = re.compile("[\u0591-\u05AF\u05BD]")  # kantillációs jelek és meteg; a magánhangzók maradnak
@@ -42,6 +49,10 @@ class Verse:
     segments: OrderedDict  # "S1" -> héber szövegrész (taamim nélkül)
 
     @property
+    def talmud(self):
+        return bool(re.search(r"\s\d+[ab]:\d+$", self.ref))
+
+    @property
     def slug(self):
         return slugify(self.ref)
 
@@ -54,7 +65,12 @@ def slugify(ref):
 
 
 def parse_ref(s):
-    """Szöveges hivatkozásból (könyv, fejezet, vers). Csak egyetlen vers fogadható el."""
+    """Szöveges hivatkozásból (könyv, fejezet, vers). Csak egyetlen vers (Talmudnál egy szakasz) fogadható el."""
+    t = re.match(r"^\s*(.+?)[\s.]+(\d+)([ab])\s*[:.\s,]\s*(\d+)\s*$", s)
+    if t:
+        tractate = TRACTATE_KEYS.get(re.sub(r"[^a-z]", "", t.group(1).lower()))
+        if tractate:
+            return tractate, f"{int(t.group(2))}{t.group(3)}", int(t.group(4))
     m = re.match(r"^\s*(.+?)[\s.]+(\d+)\s*[:.\s,]\s*(\d+)\s*$", s)
     if not m:
         raise SystemExit(f"Nem értem a hivatkozást: {s!r}. Példa: \"Genesis 17:17\" vagy \"Deuteronomy 6:4\" "
@@ -98,6 +114,22 @@ def clean_verse(raw):
 
 def strength(word):
     return max((STRENGTH.get(ord(ch), 0) for ch in word), default=0)
+
+
+def segment_talmud(text, max_segments=8, min_words=3):
+    """Talmud-szakaszt mondat/tagmondat-határoknál (: . ? ;) bont, majd a legrövidebb szomszédos darabokat vonja össze."""
+    chunks = [c.split() for c in re.split(r"(?<=[:.?;])\s+", text) if c.strip()]
+    while len(chunks) > 1:
+        small = [i for i, c in enumerate(chunks) if len(c) < min_words]
+        if small:
+            i = small[0]
+            j = i - 1 if i == len(chunks) - 1 or (i > 0 and len(chunks[i - 1]) <= len(chunks[i + 1])) else i
+        elif len(chunks) > max_segments:
+            j = min(range(len(chunks) - 1), key=lambda k: len(chunks[k]) + len(chunks[k + 1]))
+        else:
+            break
+        chunks[j] += chunks.pop(j + 1)
+    return [" ".join(c) for c in chunks]
 
 
 def segment(text, max_segments=8, min_words=2, min_segments=3):
@@ -159,6 +191,8 @@ def prepare(a):
         if not ver:
             raise SystemExit(f"A(z) {dot} héber szövege nem érhető el a Sefarián.")
         ref, he_ref, text = d["ref"], d.get("heRef", ""), clean_verse(ver["text"])
+        if re.search(r"\s\d+[ab]:\d+$", ref):
+            text = _plain(text)  # a Talmud-szöveg nikudját a szegmensek és idézetek miatt elhagyjuk
         vdir.mkdir(parents=True, exist_ok=True)
         vf.write_text(json.dumps({"ref": ref, "he_ref": he_ref, "text": text}, ensure_ascii=False, indent=1),
                       encoding="utf-8")
@@ -169,6 +203,8 @@ def prepare(a):
     if Path(seg_file).exists():
         segs = load_segments_file(seg_file, text)
         print(f"Szegmensek: kézi felosztás ({seg_file})")
+    elif re.search(r"\s\d+[ab]:\d+$", ref):
+        segs = segment_talmud(text, a.max_segments)
     else:
         segs = segment(text, a.max_segments)
     verse = Verse(ref, he_ref, text, OrderedDict((f"S{i}", s) for i, s in enumerate(segs, 1)))
@@ -187,7 +223,7 @@ def prepare(a):
 
 def add_args(ap):
     """A közös, versre vonatkozó kapcsolók (pipeline.py, benchmark.py)."""
-    ap.add_argument("ref", help='a vers, pl. "Genesis 17:17", "Exodus 3:14", "Deuteronomy 6:4"')
+    ap.add_argument("ref", help='a vers, pl. "Genesis 17:17", "Exodus 3:14", "Deuteronomy 6:4", vagy Talmud-szakasz: "Berakhot 2a:3"')
     ap.add_argument("--out", default="out", help="kimeneti alapmappa; a vers az out/<Könyv.fej.vers>/ alá kerül")
     ap.add_argument("--links-json", help="helyi Sefaria /api/links JSON a letöltés helyett")
     ap.add_argument("--refresh", action="store_true", help="a vers és az összes forráslink újraletöltése")

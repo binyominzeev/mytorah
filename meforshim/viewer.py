@@ -78,10 +78,17 @@ $("verse").textContent=VERSE;
 const whoLink=(name,ref)=>ref?`<a class="who" href="${esc(sefariaUrl(ref))}" target="_blank" rel="noopener" title="${esc(ref)}">${esc(name)}</a>`
   :`<span class="who">${esc(name)}</span>`;
 
+// Talmud-szakasznál nincs kifejezés szerinti szint: egyetlen, fejléc nélküli csoport, a legtöbb magyarázót érintő kérdésekkel elöl.
+const FLAT=/\s\d+[ab]:\d+$/.test("__REF__");
+if(FLAT){
+  const clusters=DATA.groups.flatMap(g=>g.clusters).sort((a,b)=>b.n_commentators-a.n_commentators);
+  DATA.groups=[{title:"",count:clusters.length,clusters}];
+}
+
 function renderPanel(v){
   let h=`<div class="card panel">`;
   v.groups.forEach((g,gi)=>{
-    h+=`<details class="l1" data-k="${gi}"><summary>${esc(g.title)}<span class="n group-count">${g.count}</span></summary>`;
+    h+=FLAT?`<div class="l1 flat" data-k="${gi}">`:`<details class="l1" data-k="${gi}"><summary>${esc(g.title)}<span class="n group-count">${g.count}</span></summary>`;
     g.clusters.forEach((c,ci)=>{
       h+=`<details class="l2" data-k="${gi}.${ci}"><summary><span class="t">${esc(c.question)}</span>`+
       `<span class="n cluster-count">${c.n_commentators}</span></summary>`;
@@ -95,7 +102,7 @@ function renderPanel(v){
       });
       h+="</details>";
     });
-    h+="</details>";
+    h+=FLAT?"</div>":"</details>";
   });
   return h+"</div>";
 }
@@ -128,7 +135,8 @@ function applySearch(){
         }
       });
       group.classList.toggle("hidden",!visibleCount);
-      group.querySelector(".group-count").textContent=visibleCount;
+      const count=group.querySelector(".group-count");
+      if(count)count.textContent=visibleCount;
     }
   });
 }
